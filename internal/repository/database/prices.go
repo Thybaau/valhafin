@@ -3,7 +3,7 @@ package database
 import (
 	"fmt"
 	"time"
-	"valhafin/models"
+	"valhafin/internal/domain/models"
 )
 
 // CreateAsset creates a new asset in the database

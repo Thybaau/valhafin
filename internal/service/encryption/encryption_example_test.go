@@ -1,23 +1,23 @@
-package services_test
+package encryption_test
 
 import (
 	"fmt"
 	"log"
 
-	"valhafin/services"
+	"valhafin/internal/service/encryption"
 )
 
 // Example demonstrates basic usage of the encryption service
 func Example() {
 	// Generate a new encryption key (do this once and store securely)
-	keyHex, err := services.GenerateEncryptionKey()
+	keyHex, err := encryption.GenerateEncryptionKey()
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Printf("Generated key (store in ENCRYPTION_KEY env var): %s\n", keyHex)
 
 	// In production, load the key from environment variable
-	// key, err := services.LoadEncryptionKeyFromEnv()
+	// key, err := encryption.LoadEncryptionKeyFromEnv()
 
 	// For this example, we'll decode the generated key
 	// (In production, this would come from LoadEncryptionKeyFromEnv)
@@ -28,9 +28,9 @@ func Example() {
 func ExampleEncryptionService_Encrypt() {
 	// Create a 32-byte key (in production, use LoadEncryptionKeyFromEnv)
 	key := make([]byte, 32)
-	// In production: key, _ := services.LoadEncryptionKeyFromEnv()
+	// In production: key, _ := encryption.LoadEncryptionKeyFromEnv()
 
-	service, err := services.NewEncryptionService(key)
+	service, err := encryption.NewEncryptionService(key)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -55,7 +55,7 @@ func ExampleEncryptionService_Decrypt() {
 	// Create a 32-byte key (same key used for encryption)
 	key := make([]byte, 32)
 
-	service, err := services.NewEncryptionService(key)
+	service, err := encryption.NewEncryptionService(key)
 	if err != nil {
 		log.Fatal(err)
 	}

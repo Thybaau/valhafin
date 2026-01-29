@@ -6,8 +6,9 @@ import (
 	"strings"
 	"time"
 
+	"valhafin/internal/domain/models"
+
 	"github.com/gorilla/websocket"
-	"valhafin/models"
 )
 
 type localeConfig struct {

@@ -3,7 +3,7 @@ package database
 import (
 	"encoding/json"
 	"fmt"
-	"valhafin/models"
+	"valhafin/internal/domain/models"
 )
 
 // TransactionFilter holds filter parameters for querying transactions

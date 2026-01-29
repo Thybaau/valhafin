@@ -1,7 +1,7 @@
 package boursedirect
 
 import (
-	"valhafin/config"
+	"valhafin/internal/config"
 )
 
 // TODO: Implement Bourse Direct scraper

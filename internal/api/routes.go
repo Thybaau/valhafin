@@ -1,18 +1,18 @@
 package api
 
 import (
-	"valhafin/database"
-	"valhafin/services"
+	"valhafin/internal/repository/database"
+	encryptionsvc "valhafin/internal/service/encryption"
 
 	"github.com/gorilla/mux"
 )
 
 // SetupRoutes configures all API routes
-func SetupRoutes(db *database.DB, encryption *services.EncryptionService) *mux.Router {
+func SetupRoutes(db *database.DB, encryptionService *encryptionsvc.EncryptionService) *mux.Router {
 	router := mux.NewRouter()
 
 	// Create handler with dependencies
-	handler := NewHandler(db, encryption)
+	handler := NewHandler(db, encryptionService)
 
 	// Apply middleware
 	router.Use(CORSMiddleware)

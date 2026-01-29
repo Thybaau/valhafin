@@ -9,9 +9,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"valhafin/database"
-	"valhafin/models"
-	"valhafin/services"
+	"valhafin/internal/domain/models"
+	"valhafin/internal/repository/database"
+	encryptionsvc "valhafin/internal/service/encryption"
 
 	"github.com/gorilla/mux"
 	"github.com/leanovate/gopter"
@@ -73,12 +73,12 @@ func setupTestHandler(t *testing.T) (*Handler, *database.DB) {
 		t.Fatalf("Failed to generate encryption key: %v", err)
 	}
 
-	encryption, err := services.NewEncryptionService(key)
+	encryptionService, err := encryptionsvc.NewEncryptionService(key)
 	if err != nil {
 		t.Fatalf("Failed to create encryption service: %v", err)
 	}
 
-	handler := NewHandler(db, encryption)
+	handler := NewHandler(db, encryptionService)
 	return handler, db
 }
 

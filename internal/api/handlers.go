@@ -4,9 +4,9 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
-	"valhafin/database"
-	"valhafin/models"
-	"valhafin/services"
+	"valhafin/internal/domain/models"
+	"valhafin/internal/repository/database"
+	encryptionsvc "valhafin/internal/service/encryption"
 
 	"github.com/gorilla/mux"
 )
@@ -26,15 +26,15 @@ type ErrorDetail struct {
 // Handler holds dependencies for API handlers
 type Handler struct {
 	DB         *database.DB
-	Encryption *services.EncryptionService
+	Encryption *encryptionsvc.EncryptionService
 	Validator  *CredentialsValidator
 }
 
 // NewHandler creates a new Handler with dependencies
-func NewHandler(db *database.DB, encryption *services.EncryptionService) *Handler {
+func NewHandler(db *database.DB, encryptionService *encryptionsvc.EncryptionService) *Handler {
 	return &Handler{
 		DB:         db,
-		Encryption: encryption,
+		Encryption: encryptionService,
 		Validator:  NewCredentialsValidator(),
 	}
 }

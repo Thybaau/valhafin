@@ -1,7 +1,7 @@
 package binance
 
 import (
-	"valhafin/config"
+	"valhafin/internal/config"
 )
 
 // TODO: Implement Binance API client

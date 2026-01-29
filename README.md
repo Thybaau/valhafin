@@ -110,31 +110,32 @@ Le frontend sera accessible sur http://localhost:5173
 
 ```
 valhafin/
-├── main.go                    # Point d'entrée backend
-├── api/                       # API REST handlers
-│   ├── handlers.go
-│   ├── middleware.go
-│   └── routes.go
-├── config/                    # Configuration
-├── database/                  # Couche d'accès aux données
-├── models/                    # Modèles de données
-├── scrapers/                  # Scrapers pour chaque plateforme
-│   ├── traderepublic/
-│   ├── binance/
-│   └── boursedirect/
-├── services/                  # Services métier
-├── utils/                     # Utilitaires
-├── frontend/                  # Application React
-│   ├── src/
-│   │   ├── components/       # Composants React
-│   │   ├── pages/            # Pages
-│   │   ├── services/         # Services API
-│   │   ├── hooks/            # Hooks personnalisés
-│   │   └── types/            # Types TypeScript
-│   └── package.json
-├── docker-compose.dev.yml     # Docker Compose pour développement
-└── .env.example               # Exemple de configuration
+├── main.go                    # Point d'entrée du serveur API
+├── internal/                  # Code privé de l'application
+│   ├── api/                   # HTTP handlers, routes, middleware, validation
+│   ├── domain/
+│   │   └── models/            # Modèles métier (Account, Asset, Transaction, etc.)
+│   ├── repository/
+│   │   └── database/          # Couche d'accès aux données PostgreSQL
+│   ├── service/
+│   │   ├── encryption/        # Service de chiffrement AES-256-GCM
+│   │   └── scraper/           # Scrapers pour chaque plateforme
+│   │       ├── traderepublic/
+│   │       ├── binance/
+│   │       └── boursedirect/
+│   ├── config/                # Configuration de l'application
+│   └── utils/                 # Fonctions utilitaires
+└── frontend/                  # Application React
+    ├── src/
+    │   ├── components/        # Composants React
+    │   ├── pages/             # Pages
+    │   ├── services/          # Services API
+    │   ├── hooks/             # Hooks personnalisés
+    │   └── types/             # Types TypeScript
+    └── package.json
 ```
+
+**Note**: Le dossier `internal/` suit la convention Go pour le code privé qui ne peut pas être importé par d'autres projets.
 
 ## Développement
 

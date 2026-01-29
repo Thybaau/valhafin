@@ -7,10 +7,10 @@ import (
 	"net/http"
 	"strings"
 
-	"valhafin/api"
-	"valhafin/config"
-	"valhafin/database"
-	"valhafin/services"
+	"valhafin/internal/api"
+	"valhafin/internal/config"
+	"valhafin/internal/repository/database"
+	encryptionsvc "valhafin/internal/service/encryption"
 )
 
 func main() {
@@ -44,13 +44,13 @@ func main() {
 		log.Fatalf("❌ Failed to get encryption key: %v", err)
 	}
 
-	encryption, err := services.NewEncryptionService(encryptionKey)
+	encryptionService, err := encryptionsvc.NewEncryptionService(encryptionKey)
 	if err != nil {
 		log.Fatalf("❌ Failed to initialize encryption service: %v", err)
 	}
 
 	// Setup routes
-	router := api.SetupRoutes(db, encryption)
+	router := api.SetupRoutes(db, encryptionService)
 
 	// Start server
 	port := cfg.Server.Port

@@ -2,7 +2,7 @@ package traderepublic
 
 import (
 	"net/http"
-	"valhafin/config"
+	"valhafin/internal/config"
 )
 
 const (
