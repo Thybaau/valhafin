@@ -12,6 +12,7 @@ import (
 	"valhafin/internal/domain/models"
 	"valhafin/internal/repository/database"
 	encryptionsvc "valhafin/internal/service/encryption"
+	"valhafin/internal/service/price"
 	"valhafin/internal/service/sync"
 
 	"github.com/gorilla/mux"
@@ -83,7 +84,10 @@ func setupTestHandler(t *testing.T) (*Handler, *database.DB) {
 	scraperFactory := sync.NewScraperFactory()
 	syncService := sync.NewService(db, scraperFactory, encryptionService)
 
-	handler := NewHandler(db, encryptionService, syncService)
+	// Create price service
+	priceService := price.NewYahooFinanceService(db)
+
+	handler := NewHandler(db, encryptionService, syncService, priceService)
 	return handler, db
 }
 
