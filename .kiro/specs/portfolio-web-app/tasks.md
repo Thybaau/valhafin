@@ -32,13 +32,13 @@ Ce plan d'implémentation transforme le design en étapes concrètes de dévelop
     - Implémenter les fonctions CRUD pour les prix des actifs
     - _Exigences: 8.3_
 
-- [ ] 3. Service de chiffrement et sécurité
-  - [ ] 3.1 Implémenter le service de chiffrement AES-256-GCM
+- [x] 3. Service de chiffrement et sécurité
+  - [x] 3.1 Implémenter le service de chiffrement AES-256-GCM
     - Créer les fonctions Encrypt et Decrypt
     - Implémenter la gestion sécurisée de la clé de chiffrement
     - _Exigences: 1.5_
   
-  - [ ] 3.2 Écrire les tests de propriété pour le chiffrement
+  - [x] 3.2 Écrire les tests de propriété pour le chiffrement
     - **Propriété 22: Round-trip chiffrement/déchiffrement**
     - **Valide: Exigences 1.5**
 

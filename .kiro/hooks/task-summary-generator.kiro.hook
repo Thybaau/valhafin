@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "name": "Task Summary Generator",
+  "description": "Automatically creates a TASK_SUMMARY_(task number).md file in the docs folder summarizing all modifications made during the completed task",
+  "version": "1",
+  "when": {
+    "type": "agentStop"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Crée un fichier de résumé dans docs/TASK_SUMMARY_(numéro de tâche).md qui documente toutes les modifications apportées pendant cette tâche. Inclus les fichiers modifiés, les fonctionnalités ajoutées, et les changements importants."
+  }
+}
