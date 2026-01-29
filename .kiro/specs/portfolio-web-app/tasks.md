@@ -116,7 +116,7 @@ Ce plan d'implémentation transforme le design en étapes concrètes de dévelop
     - Tester que les tâches sont bien déclenchées aux intervalles corrects
     - _Exigences: 2.6, 10.4_
 
-- [ ] 9. Checkpoint - Vérifier la synchronisation et les prix
+- [x] 9. Checkpoint - Vérifier la synchronisation et les prix
   - Tester la synchronisation complète d'un compte Trade Republic
   - Vérifier que les prix sont récupérés et stockés
   - Vérifier que le scheduler fonctionne
