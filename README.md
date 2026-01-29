@@ -1,7 +1,7 @@
 # Valhafin 🔥⚔️
 
 **Your Financial Valhalla**
-
+Hey
 *Where wealth warriors ascend*
 
 A high-performance Go application to scrape and aggregate financial data from multiple sources (Trade Republic, Binance, Bourse Direct, etc.).
