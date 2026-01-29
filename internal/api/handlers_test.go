@@ -12,6 +12,7 @@ import (
 	"valhafin/internal/domain/models"
 	"valhafin/internal/repository/database"
 	encryptionsvc "valhafin/internal/service/encryption"
+	"valhafin/internal/service/sync"
 
 	"github.com/gorilla/mux"
 	"github.com/leanovate/gopter"
@@ -78,7 +79,11 @@ func setupTestHandler(t *testing.T) (*Handler, *database.DB) {
 		t.Fatalf("Failed to create encryption service: %v", err)
 	}
 
-	handler := NewHandler(db, encryptionService)
+	// Create scraper factory and sync service
+	scraperFactory := sync.NewScraperFactory()
+	syncService := sync.NewService(db, scraperFactory, encryptionService)
+
+	handler := NewHandler(db, encryptionService, syncService)
 	return handler, db
 }
 
