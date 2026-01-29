@@ -61,26 +61,26 @@ Ce plan d'implémentation transforme le design en étapes concrètes de dévelop
     - **Propriété 3: Suppression en cascade**
     - **Valide: Exigences 1.1-1.6**
 
-- [ ] 5. Checkpoint - Vérifier que les tests passent et que l'API des comptes fonctionne
+- [x] 5. Checkpoint - Vérifier que les tests passent et que l'API des comptes fonctionne
   - Tester manuellement la création, lecture, et suppression de comptes
   - Vérifier que les credentials sont bien chiffrés en base de données
   - Demander à l'utilisateur si des questions se posent
 
-- [ ] 6. Intégration des scrapers existants
-  - [ ] 6.1 Adapter les scrapers existants pour l'architecture API
+- [x] 6. Intégration des scrapers existants
+  - [x] 6.1 Adapter les scrapers existants pour l'architecture API
     - Créer une interface Scraper commune pour Trade Republic, Binance, Bourse Direct
     - Adapter le scraper Trade Republic existant
     - Préparer les stubs pour Binance et Bourse Direct
     - _Exigences: 2.1, 7.2_
   
-  - [ ] 6.2 Implémenter l'endpoint de synchronisation
+  - [x] 6.2 Implémenter l'endpoint de synchronisation
     - POST /api/accounts/:id/sync - Déclencher une synchronisation
     - Implémenter la logique de synchronisation complète (première fois)
     - Implémenter la logique de synchronisation incrémentale
     - Gérer les erreurs de scraping avec logging détaillé
     - _Exigences: 2.1, 2.2, 2.3, 2.4, 2.5_
   
-  - [ ] 6.3 Écrire les tests de propriété pour la synchronisation
+  - [x] 6.3 Écrire les tests de propriété pour la synchronisation
     - **Propriété 4: Synchronisation complète initiale**
     - **Propriété 5: Synchronisation incrémentale**
     - **Propriété 6: Gestion d'erreur de synchronisation**

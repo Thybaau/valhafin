@@ -4,9 +4,11 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"valhafin/internal/domain/models"
 	"valhafin/internal/repository/database"
 	encryptionsvc "valhafin/internal/service/encryption"
+	"valhafin/internal/service/sync"
 
 	"github.com/gorilla/mux"
 )
@@ -25,17 +27,19 @@ type ErrorDetail struct {
 
 // Handler holds dependencies for API handlers
 type Handler struct {
-	DB         *database.DB
-	Encryption *encryptionsvc.EncryptionService
-	Validator  *CredentialsValidator
+	DB          *database.DB
+	Encryption  *encryptionsvc.EncryptionService
+	Validator   *CredentialsValidator
+	SyncService *sync.Service
 }
 
 // NewHandler creates a new Handler with dependencies
-func NewHandler(db *database.DB, encryptionService *encryptionsvc.EncryptionService) *Handler {
+func NewHandler(db *database.DB, encryptionService *encryptionsvc.EncryptionService, syncService *sync.Service) *Handler {
 	return &Handler{
-		DB:         db,
-		Encryption: encryptionService,
-		Validator:  NewCredentialsValidator(),
+		DB:          db,
+		Encryption:  encryptionService,
+		Validator:   NewCredentialsValidator(),
+		SyncService: syncService,
 	}
 }
 
@@ -172,7 +176,7 @@ func (h *Handler) GetAccountHandler(w http.ResponseWriter, r *http.Request) {
 
 	account, err := h.DB.GetAccountByID(accountID)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if err == sql.ErrNoRows || (err != nil && strings.Contains(err.Error(), "no rows")) {
 			respondError(w, http.StatusNotFound, "NOT_FOUND", "Account not found", nil)
 			return
 		}
@@ -196,7 +200,7 @@ func (h *Handler) DeleteAccountHandler(w http.ResponseWriter, r *http.Request) {
 	// Check if account exists
 	_, err := h.DB.GetAccountByID(accountID)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if err == sql.ErrNoRows || (err != nil && strings.Contains(err.Error(), "no rows")) {
 			respondError(w, http.StatusNotFound, "NOT_FOUND", "Account not found", nil)
 			return
 		}
@@ -217,7 +221,40 @@ func (h *Handler) DeleteAccountHandler(w http.ResponseWriter, r *http.Request) {
 
 // SyncAccountHandler triggers synchronization for an account
 func (h *Handler) SyncAccountHandler(w http.ResponseWriter, r *http.Request) {
-	respondError(w, http.StatusNotImplemented, "NOT_IMPLEMENTED", "Not implemented yet", nil)
+	vars := mux.Vars(r)
+	accountID := vars["id"]
+
+	if accountID == "" {
+		respondError(w, http.StatusBadRequest, "INVALID_REQUEST", "Account ID is required", nil)
+		return
+	}
+
+	// Check if account exists
+	_, err := h.DB.GetAccountByID(accountID)
+	if err != nil {
+		if err == sql.ErrNoRows || (err != nil && strings.Contains(err.Error(), "no rows")) {
+			respondError(w, http.StatusNotFound, "NOT_FOUND", "Account not found", nil)
+			return
+		}
+		respondError(w, http.StatusInternalServerError, "DATABASE_ERROR", "Failed to retrieve account", nil)
+		return
+	}
+
+	// Trigger synchronization
+	result, err := h.SyncService.SyncAccount(accountID)
+	if err != nil {
+		// Return the result even if there was an error, as it contains useful information
+		if result != nil {
+			respondJSON(w, http.StatusOK, result)
+			return
+		}
+		respondError(w, http.StatusInternalServerError, "SYNC_ERROR", "Failed to synchronize account", map[string]string{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	respondJSON(w, http.StatusOK, result)
 }
 
 // Transaction handlers (stubs for now)

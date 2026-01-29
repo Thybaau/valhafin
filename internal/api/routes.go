@@ -2,17 +2,24 @@ package api
 
 import (
 	"valhafin/internal/repository/database"
-	encryptionsvc "valhafin/internal/service/encryption"
+	"valhafin/internal/service/encryption"
+	"valhafin/internal/service/sync"
 
 	"github.com/gorilla/mux"
 )
 
 // SetupRoutes configures all API routes
-func SetupRoutes(db *database.DB, encryptionService *encryptionsvc.EncryptionService) *mux.Router {
+func SetupRoutes(db *database.DB, encryptionService *encryption.EncryptionService) *mux.Router {
 	router := mux.NewRouter()
 
+	// Create scraper factory
+	scraperFactory := sync.NewScraperFactory()
+
+	// Create sync service
+	syncService := sync.NewService(db, scraperFactory, encryptionService)
+
 	// Create handler with dependencies
-	handler := NewHandler(db, encryptionService)
+	handler := NewHandler(db, encryptionService, syncService)
 
 	// Apply middleware
 	router.Use(CORSMiddleware)

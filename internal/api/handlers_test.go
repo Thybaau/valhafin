@@ -3,11 +3,11 @@ package api
 import (
 	"bytes"
 	"crypto/rand"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"valhafin/internal/domain/models"
 	"valhafin/internal/repository/database"
@@ -420,8 +420,13 @@ func TestProperty_CascadeDelete(t *testing.T) {
 
 			// Verify account no longer exists
 			_, err = db.GetAccountByID(accountID)
-			if err != sql.ErrNoRows {
-				t.Logf("Account still exists after deletion or unexpected error: %v", err)
+			if err == nil {
+				t.Logf("Account still exists after deletion")
+				return false
+			}
+			// The error should indicate the account was not found
+			if !strings.Contains(err.Error(), "no rows") {
+				t.Logf("Unexpected error after deletion: %v", err)
 				return false
 			}
 

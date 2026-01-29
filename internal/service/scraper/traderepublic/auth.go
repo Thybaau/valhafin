@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"valhafin/internal/service/scraper/types"
 )
 
 type loginResponse struct {
@@ -14,17 +15,20 @@ type loginResponse struct {
 	CountdownInSeconds int    `json:"countdownInSeconds"`
 }
 
-func (s *Scraper) Authenticate() (string, error) {
+// authenticate performs the authentication flow for Trade Republic
+// Note: This is a simplified version that doesn't handle 2FA interactively
+// In a production environment, this would need to be handled differently
+func (s *Scraper) authenticate(phoneNumber, pin string) (string, error) {
 	// Step 1: Initiate login
 	loginPayload := map[string]string{
-		"phoneNumber": s.config.Secret.PhoneNumber,
-		"pin":         s.config.Secret.Pin,
+		"phoneNumber": phoneNumber,
+		"pin":         pin,
 	}
 
 	loginBody, _ := json.Marshal(loginPayload)
 	req, err := http.NewRequest("POST", baseURL+"/api/v1/auth/web/login", bytes.NewBuffer(loginBody))
 	if err != nil {
-		return "", err
+		return "", types.NewNetworkError("traderepublic", "Failed to create login request", err)
 	}
 
 	req.Header.Set("User-Agent", userAgent)
@@ -32,52 +36,58 @@ func (s *Scraper) Authenticate() (string, error) {
 
 	resp, err := s.client.Do(req)
 	if err != nil {
-		return "", err
+		return "", types.NewNetworkError("traderepublic", "Failed to send login request", err)
 	}
 	defer resp.Body.Close()
 
 	body, _ := io.ReadAll(resp.Body)
+
+	if resp.StatusCode != http.StatusOK {
+		return "", types.NewAuthError("traderepublic", "Login failed. Check your phone number and PIN", nil)
+	}
+
 	var loginResp loginResponse
 	if err := json.Unmarshal(body, &loginResp); err != nil {
-		return "", fmt.Errorf("failed to initialize connection. Check your phone number and PIN")
+		return "", types.NewParsingError("traderepublic", "Failed to parse login response", err)
 	}
 
 	if loginResp.ProcessID == "" {
-		return "", fmt.Errorf("failed to initialize connection. Check your phone number and PIN")
+		return "", types.NewAuthError("traderepublic", "Failed to initialize connection. Check your phone number and PIN", nil)
 	}
 
-	// Step 2: Request 2FA code
-	fmt.Printf("❓ Enter the 2FA code received (%d seconds remaining) or type 'SMS': ", loginResp.CountdownInSeconds)
-	var code string
-	fmt.Scanln(&code)
+	// Note: In a real implementation, we would need to handle 2FA here
+	// This could be done via:
+	// 1. Storing the processID and returning it to the client
+	// 2. Having a separate endpoint to complete authentication with the 2FA code
+	// 3. Using a callback mechanism
 
-	// If user wants SMS
-	if strings.ToUpper(code) == "SMS" {
-		resendURL := fmt.Sprintf("%s/api/v1/auth/web/login/%s/resend", baseURL, loginResp.ProcessID)
-		resendReq, _ := http.NewRequest("POST", resendURL, nil)
-		resendReq.Header.Set("User-Agent", userAgent)
-		s.client.Do(resendReq)
+	// For now, we return an error indicating that 2FA is required
+	return "", types.NewAuthError("traderepublic",
+		fmt.Sprintf("2FA authentication required. Process ID: %s. This needs to be completed interactively.", loginResp.ProcessID),
+		nil)
+}
 
-		fmt.Print("❓ Enter the 2FA code received by SMS: ")
-		fmt.Scanln(&code)
-	}
-
+// Authenticate2FA completes the 2FA authentication process
+// This is a helper method that can be called separately when 2FA code is available
+func (s *Scraper) Authenticate2FA(processID, code string) (string, error) {
 	// Step 3: Verify device with 2FA code
-	verifyURL := fmt.Sprintf("%s/api/v1/auth/web/login/%s/%s", baseURL, loginResp.ProcessID, code)
-	verifyReq, _ := http.NewRequest("POST", verifyURL, nil)
+	verifyURL := fmt.Sprintf("%s/api/v1/auth/web/login/%s/%s", baseURL, processID, code)
+	verifyReq, err := http.NewRequest("POST", verifyURL, nil)
+	if err != nil {
+		return "", types.NewNetworkError("traderepublic", "Failed to create verification request", err)
+	}
+
 	verifyReq.Header.Set("User-Agent", userAgent)
 
 	verifyResp, err := s.client.Do(verifyReq)
 	if err != nil {
-		return "", err
+		return "", types.NewNetworkError("traderepublic", "Failed to send verification request", err)
 	}
 	defer verifyResp.Body.Close()
 
-	if verifyResp.StatusCode != 200 {
-		return "", fmt.Errorf("device verification failed. Check the code and try again")
+	if verifyResp.StatusCode != http.StatusOK {
+		return "", types.NewAuthError("traderepublic", "Device verification failed. Check the code and try again", nil)
 	}
-
-	fmt.Println("✅ Device verified successfully!")
 
 	// Step 4: Extract session token from cookies
 	for _, cookie := range verifyResp.Cookies() {
@@ -96,5 +106,5 @@ func (s *Scraper) Authenticate() (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("session token not found")
+	return "", types.NewAuthError("traderepublic", "Session token not found in response", nil)
 }
