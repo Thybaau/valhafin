@@ -6,7 +6,7 @@ Ce plan d'implémentation transforme le design en étapes concrètes de dévelop
 
 ## Tâches
 
-- [ ] 1. Configuration initiale du projet et infrastructure de base
+- [x] 1. Configuration initiale du projet et infrastructure de base
   - Créer la structure de dossiers pour le backend Go et le frontend React
   - Configurer PostgreSQL avec Docker Compose pour le développement local
   - Créer le fichier de configuration Go pour charger les variables d'environnement
@@ -14,19 +14,19 @@ Ce plan d'implémentation transforme le design en étapes concrètes de dévelop
   - Configurer Tailwind CSS avec le thème sombre personnalisé
   - _Exigences: 7.2, 8.1, 6.1, 6.2_
 
-- [ ] 2. Modèles de données et migrations de base de données
-  - [ ] 2.1 Créer les modèles Go pour Account, Asset, AssetPrice, Transaction
+- [x] 2. Modèles de données et migrations de base de données
+  - [x] 2.1 Créer les modèles Go pour Account, Asset, AssetPrice, Transaction
     - Définir les structs avec les tags JSON et DB appropriés
     - Implémenter les méthodes de validation pour chaque modèle
     - _Exigences: 8.3_
   
-  - [ ] 2.2 Implémenter le système de migrations de base de données
+  - [x] 2.2 Implémenter le système de migrations de base de données
     - Créer les migrations pour les tables accounts, assets, asset_prices
     - Créer les migrations pour les tables de transactions (par plateforme)
     - Ajouter les index sur les colonnes fréquemment utilisées
     - _Exigences: 8.2, 8.3, 8.4, 8.5_
   
-  - [ ] 2.3 Créer la couche d'accès aux données (database layer)
+  - [x] 2.3 Créer la couche d'accès aux données (database layer)
     - Implémenter les fonctions CRUD pour les comptes
     - Implémenter les fonctions CRUD pour les transactions
     - Implémenter les fonctions CRUD pour les prix des actifs

@@ -1,155 +1,244 @@
-# Getting Started with Valhafin 🔥⚔️
+# Getting Started with Valhafin
 
-**Your journey to financial Valhalla begins here**
+Ce guide vous aidera à configurer et démarrer l'application Valhafin pour le développement.
 
-## 🚀 Quick Start
+## Prérequis
 
-### 1. Installation
+Avant de commencer, assurez-vous d'avoir installé :
+
+- **Go 1.21+** : [Installation Go](https://golang.org/doc/install)
+- **Node.js 20+** : [Installation Node.js](https://nodejs.org/)
+- **Docker** : [Installation Docker](https://docs.docker.com/get-docker/) (pour PostgreSQL)
+- **Make** : Généralement préinstallé sur macOS/Linux
+
+## Installation Rapide
+
+### 1. Cloner le projet
 
 ```bash
+git clone <repository-url>
 cd valhafin
-go mod download
 ```
 
-### 2. Configuration
+### 2. Configuration initiale
 
-Copie le fichier de configuration exemple :
+Exécutez la commande de setup qui installe toutes les dépendances et démarre PostgreSQL :
 
 ```bash
-cp config.yaml.example config.yaml
+make setup
 ```
 
-Édite `config.yaml` avec tes identifiants Trade Republic :
+Cette commande va :
+- Installer les dépendances Go
+- Installer les dépendances npm du frontend
+- Démarrer PostgreSQL avec Docker Compose
 
-```yaml
-secret:
-  phone_number: "+33XXXXXXXXX"
-  pin: "XXXX"
+### 3. Configuration de l'environnement
 
-general:
-  output_format: "csv"  # ou "json"
-  output_folder: "out"
-  extract_details: true
-```
-
-### 3. Exécution
+Créez un fichier `.env` à partir de l'exemple :
 
 ```bash
-# Avec Go
-go run main.go
-
-# Ou compile et exécute
-make build
-./valhafin
+cp .env.example .env
 ```
 
-## 📊 Formats de sortie
+Éditez `.env` et configurez les variables nécessaires :
 
-### CSV (recommandé pour Excel)
-- Séparateur : `;`
-- Encodage : UTF-8 avec BOM
-- Décimales : virgule (format français)
+```env
+# Base de données
+DATABASE_URL=postgresql://valhafin:valhafin_dev_password@localhost:5432/valhafin_dev?sslmode=disable
 
-### JSON
-- Format structuré pour intégration API
-- Indentation pour lisibilité
+# Serveur
+PORT=8080
 
-## 🏗️ Architecture du projet
+# Clé de chiffrement (générez une clé aléatoire de 64 caractères hexadécimaux)
+ENCRYPTION_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+
+# API Yahoo Finance (optionnel)
+YAHOO_FINANCE_API_KEY=
+
+# Identifiants Trade Republic (pour le scraping)
+TR_PHONE_NUMBER=+33XXXXXXXXX
+TR_PIN=XXXX
+```
+
+### 4. Démarrer l'application
+
+#### Option A : Démarrage manuel (recommandé pour le développement)
+
+Dans un terminal, démarrez le backend :
+
+```bash
+make dev-backend
+```
+
+Dans un autre terminal, démarrez le frontend :
+
+```bash
+make dev-frontend
+```
+
+#### Option B : Utiliser le Makefile
+
+```bash
+# Démarrer PostgreSQL
+make dev-db
+
+# Dans un autre terminal
+make dev-backend
+
+# Dans un troisième terminal
+make dev-frontend
+```
+
+### 5. Accéder à l'application
+
+- **Frontend** : http://localhost:5173
+- **Backend API** : http://localhost:8080
+- **Health Check** : http://localhost:8080/health
+
+## Structure du Projet
 
 ```
 valhafin/
-├── main.go                          # Point d'entrée
-├── config/
-│   └── config.go                    # Gestion de la configuration
-├── models/
-│   └── transaction.go               # Modèles de données
-├── scrapers/
-│   ├── traderepublic/              # ✅ Implémenté
-│   │   ├── scraper.go
-│   │   ├── auth.go
-│   │   └── websocket.go
-│   ├── binance/                     # 🚧 À implémenter
-│   │   └── client.go
-│   └── boursedirect/                # 🚧 À implémenter
-│       └── scraper.go
-└── utils/
-    └── export.go                    # Export CSV/JSON
+├── api/                       # API REST (handlers, middleware, routes)
+├── config/                    # Configuration (support .env et config.yaml)
+├── database/                  # Couche d'accès aux données (à créer)
+├── models/                    # Modèles de données
+├── scrapers/                  # Scrapers pour chaque plateforme
+├── services/                  # Services métier (à créer)
+├── utils/                     # Utilitaires
+├── frontend/                  # Application React
+│   ├── src/
+│   │   ├── components/       # Composants React
+│   │   ├── services/         # Services API
+│   │   ├── types/            # Types TypeScript
+│   │   └── App.tsx           # Composant principal
+│   └── package.json
+├── docker-compose.dev.yml     # PostgreSQL pour développement
+├── .env.example               # Exemple de configuration
+└── Makefile                   # Commandes de développement
 ```
 
-## 🔧 Développement
+## Commandes Utiles
 
-### Ajouter un nouveau scraper
-
-1. Crée un nouveau package dans `scrapers/`
-2. Implémente l'interface de scraping
-3. Ajoute la configuration dans `config.yaml`
-4. Intègre dans `main.go`
-
-### Exemple pour Binance
-
-```go
-// scrapers/binance/client.go
-package binance
-
-import "valhafin/models"
-
-type Client struct {
-    apiKey string
-    secret string
-}
-
-func (c *Client) FetchTransactions() ([]models.Transaction, error) {
-    // Implémentation avec l'API Binance
-}
-```
-
-### Tests
+### Backend
 
 ```bash
+# Installer les dépendances
+go mod download
+
+# Lancer les tests
 go test ./...
+
+# Build
+go build -o valhafin
+
+# Lancer l'application
+./valhafin
 ```
 
-## 📝 Prochaines étapes
+### Frontend
 
-### Phase 1 : Binance (Facile - API officielle)
-- [ ] Ajouter les credentials Binance dans config.yaml
-- [ ] Implémenter le client API REST
-- [ ] Mapper les données vers le modèle unifié
-- [ ] Tester avec ton compte
+```bash
+cd frontend
 
-### Phase 2 : Bourse Direct (Moyen - Scraping)
-- [ ] Option A : Import CSV manuel
-- [ ] Option B : Reverse engineering de l'API web
-- [ ] Mapper les données vers le modèle unifié
+# Installer les dépendances
+npm install
 
-### Phase 3 : Application Web
-- [ ] Backend API (Go avec Gin ou Echo)
-- [ ] Frontend (React/Vue.js)
-- [ ] Base de données (PostgreSQL)
-- [ ] Visualisations (Chart.js/Recharts)
+# Démarrer le serveur de développement
+npm run dev
 
-## 🎯 Avantages de Go vs Python
+# Lancer les tests
+npm test
 
-- **Performance** : 10-50x plus rapide
-- **Concurrence** : Goroutines natives pour scraping parallèle
-- **Compilation** : Binaire unique, pas de dépendances
-- **Typage** : Détection d'erreurs à la compilation
-- **Déploiement** : Simple, pas besoin de venv
+# Linting
+npm run lint
 
-## 🐛 Troubleshooting
+# Build de production
+npm run build
+```
 
-### Erreur de connexion WebSocket
-- Vérifie ta connexion internet
-- Vérifie que Trade Republic n'a pas changé son API
+### Base de données
 
-### Erreur d'authentification
-- Vérifie ton numéro de téléphone (format international)
-- Vérifie ton PIN
-- Assure-toi de recevoir le code 2FA
+```bash
+# Démarrer PostgreSQL
+make dev-db
 
-### Erreur de compilation
+# Arrêter PostgreSQL
+make dev-db-stop
+
+# Se connecter à PostgreSQL
+docker exec -it valhafin-postgres-dev psql -U valhafin -d valhafin_dev
+```
+
+## Développement
+
+### Workflow de développement
+
+1. **Backend** : Modifiez les fichiers Go, le serveur redémarre automatiquement avec `go run`
+2. **Frontend** : Modifiez les fichiers React, Vite recharge automatiquement le navigateur
+3. **Base de données** : Les migrations seront créées dans les prochaines tâches
+
+### Ajouter une nouvelle route API
+
+1. Définir le handler dans `api/handlers.go`
+2. Ajouter la route dans `api/routes.go`
+3. Créer le service correspondant dans `services/`
+4. Créer les fonctions de base de données dans `database/`
+
+### Ajouter un nouveau composant frontend
+
+1. Créer le composant dans `frontend/src/components/`
+2. Créer les types dans `frontend/src/types/`
+3. Créer le service API dans `frontend/src/services/`
+4. Créer le hook personnalisé dans `frontend/src/hooks/`
+
+## Prochaines Étapes
+
+Maintenant que l'infrastructure de base est configurée, vous pouvez :
+
+1. **Tâche 2** : Créer les modèles de données et migrations de base de données
+2. **Tâche 3** : Implémenter le service de chiffrement
+3. **Tâche 4** : Développer l'API REST pour la gestion des comptes
+
+Consultez le fichier `.kiro/specs/portfolio-web-app/tasks.md` pour la liste complète des tâches.
+
+## Dépannage
+
+### PostgreSQL ne démarre pas
+
+```bash
+# Vérifier les logs
+docker-compose -f docker-compose.dev.yml logs postgres
+
+# Redémarrer
+docker-compose -f docker-compose.dev.yml restart postgres
+```
+
+### Le frontend ne se connecte pas au backend
+
+Vérifiez que :
+- Le backend est démarré sur le port 8080
+- Le CORS est configuré correctement dans `api/middleware.go`
+- L'URL de l'API est correcte dans `frontend/src/services/api.ts`
+
+### Erreur de dépendances Go
+
 ```bash
 go mod tidy
-go clean -cache
-go build
+go mod download
 ```
+
+### Erreur de dépendances npm
+
+```bash
+cd frontend
+rm -rf node_modules package-lock.json
+npm install
+```
+
+## Support
+
+Pour toute question ou problème, consultez :
+- [Documentation du projet](.kiro/specs/portfolio-web-app/)
+- [Issues GitHub](lien-vers-issues)

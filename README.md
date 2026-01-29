@@ -4,64 +4,160 @@
 
 *Where wealth warriors ascend*
 
-A high-performance Go application to scrape and aggregate financial data from multiple sources (Trade Republic, Binance, Bourse Direct, etc.).
+Application web de gestion de portefeuille financier qui permet de connecter des comptes sur différentes plateformes d'investissement (Trade Republic, Binance, Bourse Direct), de télécharger automatiquement l'historique des transactions, et de visualiser les performances financières à travers des graphiques et des métriques détaillées.
 
 Named after Valhalla, the hall of slain heroes in Norse mythology - your ultimate destination for financial glory.
 
-## Supported Sources
+## Architecture
 
-- ✅ Trade Republic
-- 🚧 Binance (coming soon)
-- 🚧 Bourse Direct (coming soon)
+Valhafin est composé de deux parties principales :
 
-## Installation
+- **Backend Go** : API RESTful qui gère les scrapers, la base de données PostgreSQL, et la récupération des prix des actifs
+- **Frontend React** : Interface utilisateur moderne avec thème sombre, construite avec React, TypeScript et Tailwind CSS
+
+## Fonctionnalités
+
+- 🔐 Connexion sécurisée aux comptes financiers (Trade Republic, Binance, Bourse Direct)
+- 📊 Synchronisation automatique des transactions
+- 📈 Visualisation des performances avec graphiques interactifs
+- 💰 Métriques détaillées sur les frais
+- 🎨 Interface moderne avec thème sombre et touches de bleu
+- 📱 Design responsive (desktop, tablette, mobile)
+- 🔄 Mise à jour automatique des prix des actifs
+- 📥 Import de données CSV
+
+## Démarrage Rapide
+
+### Prérequis
+
+- Go 1.21+
+- Node.js 20+
+- PostgreSQL 15+ (ou Docker)
+
+### 1. Configuration de la base de données
+
+Démarrer PostgreSQL avec Docker Compose :
+
+```bash
+docker-compose -f docker-compose.dev.yml up -d
+```
+
+### 2. Configuration du backend
+
+Créer un fichier `.env` à partir de `.env.example` :
+
+```bash
+cp .env.example .env
+```
+
+Éditer `.env` avec vos configurations :
+
+```env
+DATABASE_URL=postgresql://valhafin:valhafin_dev_password@localhost:5432/valhafin_dev?sslmode=disable
+PORT=8080
+ENCRYPTION_KEY=your_32_byte_hex_key_here
+```
+
+Installer les dépendances Go :
 
 ```bash
 go mod download
 ```
 
-## Configuration
-
-Copy `config.yaml.example` and edit with your credentials:
-
-```yaml
-secret:
-  phone_number: "+33XXXXXXXXX"
-  pin: "XXXX"
-
-general:
-  output_format: "csv"  # json or csv
-  output_folder: "out"
-  extract_details: true
-```
-
-## Usage
+Démarrer le backend :
 
 ```bash
 go run main.go
 ```
 
-## Build
+Le backend sera accessible sur http://localhost:8080
+
+### 3. Configuration du frontend
+
+Installer les dépendances :
 
 ```bash
-go build -o valhafin
-./valhafin
+cd frontend
+npm install
 ```
 
-## Project Structure
+Démarrer le serveur de développement :
+
+```bash
+npm run dev
+```
+
+Le frontend sera accessible sur http://localhost:5173
+
+## Structure du Projet
 
 ```
 valhafin/
-├── main.go                 # Entry point
-├── config/                 # Configuration management
-├── scrapers/              # Scraper implementations
-│   ├── traderepublic/    # Trade Republic scraper
-│   ├── binance/          # Binance API client
-│   └── boursedirect/     # Bourse Direct scraper
-├── models/               # Data models
-├── utils/                # Utilities (CSV, JSON export)
-└── out/                  # Output directory
+├── main.go                    # Point d'entrée backend
+├── api/                       # API REST handlers
+│   ├── handlers.go
+│   ├── middleware.go
+│   └── routes.go
+├── config/                    # Configuration
+├── database/                  # Couche d'accès aux données
+├── models/                    # Modèles de données
+├── scrapers/                  # Scrapers pour chaque plateforme
+│   ├── traderepublic/
+│   ├── binance/
+│   └── boursedirect/
+├── services/                  # Services métier
+├── utils/                     # Utilitaires
+├── frontend/                  # Application React
+│   ├── src/
+│   │   ├── components/       # Composants React
+│   │   ├── pages/            # Pages
+│   │   ├── services/         # Services API
+│   │   ├── hooks/            # Hooks personnalisés
+│   │   └── types/            # Types TypeScript
+│   └── package.json
+├── docker-compose.dev.yml     # Docker Compose pour développement
+└── .env.example               # Exemple de configuration
 ```
+
+## Développement
+
+### Backend
+
+```bash
+# Lancer les tests
+go test ./...
+
+# Build
+go build -o valhafin
+```
+
+### Frontend
+
+```bash
+cd frontend
+
+# Lancer les tests
+npm test
+
+# Linting
+npm run lint
+
+# Build de production
+npm run build
+```
+
+## Plateformes Supportées
+
+- ✅ Trade Republic (scraper fonctionnel)
+- 🚧 Binance (en développement)
+- 🚧 Bourse Direct (en développement)
+
+## Documentation
+
+Pour plus de détails sur l'architecture et le design, consultez :
+
+- [Spécifications](.kiro/specs/portfolio-web-app/)
+- [Documentation Frontend](frontend/README.md)
 
 ## License
 

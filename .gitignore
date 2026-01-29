@@ -3,3 +3,16 @@ out/
 *.exe
 *.log
 valhafin
+
+# Environment variables
+.env
+.env.local
+
+# Database
+*.db
+postgres_dev_data/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
