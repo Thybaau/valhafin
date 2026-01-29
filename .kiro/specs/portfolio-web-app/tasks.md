@@ -105,14 +105,14 @@ Ce plan d'implémentation transforme le design en étapes concrètes de dévelop
     - **Propriété 15: Fallback sur dernier prix connu**
     - **Valide: Exigences 10.1-10.6**
 
-- [ ] 8. Planificateur de tâches (Scheduler)
-  - [ ] 8.1 Implémenter le Scheduler pour les tâches périodiques
+- [x] 8. Planificateur de tâches (Scheduler)
+  - [x] 8.1 Implémenter le Scheduler pour les tâches périodiques
     - Créer le scheduler avec support de tâches récurrentes
     - Ajouter la tâche de mise à jour des prix (horaire)
     - Ajouter la tâche de synchronisation automatique (quotidienne)
     - _Exigences: 2.6, 10.4_
   
-  - [ ] 8.2 Écrire les tests unitaires pour le scheduler
+  - [x] 8.2 Écrire les tests unitaires pour le scheduler
     - Tester que les tâches sont bien déclenchées aux intervalles corrects
     - _Exigences: 2.6, 10.4_
 

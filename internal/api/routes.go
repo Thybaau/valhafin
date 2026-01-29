@@ -9,8 +9,14 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// SetupRoutes configures all API routes
-func SetupRoutes(db *database.DB, encryptionService *encryption.EncryptionService) *mux.Router {
+// Services holds the application services
+type Services struct {
+	SyncService  *sync.Service
+	PriceService price.Service
+}
+
+// SetupRoutes configures all API routes and returns the router and services
+func SetupRoutes(db *database.DB, encryptionService *encryption.EncryptionService) (*mux.Router, *Services) {
 	router := mux.NewRouter()
 
 	// Create scraper factory
@@ -60,5 +66,11 @@ func SetupRoutes(db *database.DB, encryptionService *encryption.EncryptionServic
 	api.HandleFunc("/assets/{isin}/price", handler.GetAssetPriceHandler).Methods("GET")
 	api.HandleFunc("/assets/{isin}/history", handler.GetAssetPriceHistoryHandler).Methods("GET")
 
-	return router
+	// Return router and services
+	services := &Services{
+		SyncService:  syncService,
+		PriceService: priceService,
+	}
+
+	return router, services
 }

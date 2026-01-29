@@ -5,12 +5,16 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 
 	"valhafin/internal/api"
 	"valhafin/internal/config"
 	"valhafin/internal/repository/database"
 	encryptionsvc "valhafin/internal/service/encryption"
+	"valhafin/internal/service/scheduler"
 )
 
 func main() {
@@ -49,10 +53,18 @@ func main() {
 		log.Fatalf("❌ Failed to initialize encryption service: %v", err)
 	}
 
-	// Setup routes
-	router := api.SetupRoutes(db, encryptionService)
+	// Setup routes and get services
+	router, services := api.SetupRoutes(db, encryptionService)
 
-	// Start server
+	// Initialize and start scheduler
+	sched := scheduler.NewScheduler(services.PriceService, services.SyncService)
+	sched.Start()
+
+	// Setup graceful shutdown
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
+	// Start server in a goroutine
 	port := cfg.Server.Port
 	if port == "" {
 		port = "8080"
@@ -63,9 +75,28 @@ func main() {
 	log.Printf("📊 API available at http://localhost%s/api", addr)
 	log.Printf("💚 Health check at http://localhost%s/health", addr)
 
-	if err := http.ListenAndServe(addr, router); err != nil {
-		log.Fatalf("❌ Server failed: %v", err)
+	server := &http.Server{
+		Addr:    addr,
+		Handler: router,
 	}
+
+	go func() {
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("❌ Server failed: %v", err)
+		}
+	}()
+
+	// Wait for interrupt signal
+	<-sigChan
+	log.Println("🛑 Shutdown signal received")
+
+	// Stop scheduler
+	sched.Stop()
+
+	// Close database connection
+	db.Close()
+
+	log.Println("👋 Server stopped gracefully")
 }
 
 // parseDatabaseURL parses a PostgreSQL connection URL
