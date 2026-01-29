@@ -1,12 +1,18 @@
 package api
 
 import (
+	"valhafin/database"
+	"valhafin/services"
+
 	"github.com/gorilla/mux"
 )
 
 // SetupRoutes configures all API routes
-func SetupRoutes() *mux.Router {
+func SetupRoutes(db *database.DB, encryption *services.EncryptionService) *mux.Router {
 	router := mux.NewRouter()
+
+	// Create handler with dependencies
+	handler := NewHandler(db, encryption)
 
 	// Apply middleware
 	router.Use(CORSMiddleware)
@@ -16,32 +22,32 @@ func SetupRoutes() *mux.Router {
 	api := router.PathPrefix("/api").Subrouter()
 
 	// Health check
-	router.HandleFunc("/health", HealthCheckHandler).Methods("GET")
+	router.HandleFunc("/health", handler.HealthCheckHandler).Methods("GET")
 
 	// Account routes
-	api.HandleFunc("/accounts", GetAccountsHandler).Methods("GET")
-	api.HandleFunc("/accounts", CreateAccountHandler).Methods("POST")
-	api.HandleFunc("/accounts/{id}", GetAccountHandler).Methods("GET")
-	api.HandleFunc("/accounts/{id}", DeleteAccountHandler).Methods("DELETE")
-	api.HandleFunc("/accounts/{id}/sync", SyncAccountHandler).Methods("POST")
+	api.HandleFunc("/accounts", handler.GetAccountsHandler).Methods("GET")
+	api.HandleFunc("/accounts", handler.CreateAccountHandler).Methods("POST")
+	api.HandleFunc("/accounts/{id}", handler.GetAccountHandler).Methods("GET")
+	api.HandleFunc("/accounts/{id}", handler.DeleteAccountHandler).Methods("DELETE")
+	api.HandleFunc("/accounts/{id}/sync", handler.SyncAccountHandler).Methods("POST")
 
 	// Transaction routes
-	api.HandleFunc("/accounts/{id}/transactions", GetAccountTransactionsHandler).Methods("GET")
-	api.HandleFunc("/transactions", GetAllTransactionsHandler).Methods("GET")
-	api.HandleFunc("/transactions/import", ImportCSVHandler).Methods("POST")
+	api.HandleFunc("/accounts/{id}/transactions", handler.GetAccountTransactionsHandler).Methods("GET")
+	api.HandleFunc("/transactions", handler.GetAllTransactionsHandler).Methods("GET")
+	api.HandleFunc("/transactions/import", handler.ImportCSVHandler).Methods("POST")
 
 	// Performance routes
-	api.HandleFunc("/accounts/{id}/performance", GetAccountPerformanceHandler).Methods("GET")
-	api.HandleFunc("/performance", GetGlobalPerformanceHandler).Methods("GET")
-	api.HandleFunc("/assets/{isin}/performance", GetAssetPerformanceHandler).Methods("GET")
+	api.HandleFunc("/accounts/{id}/performance", handler.GetAccountPerformanceHandler).Methods("GET")
+	api.HandleFunc("/performance", handler.GetGlobalPerformanceHandler).Methods("GET")
+	api.HandleFunc("/assets/{isin}/performance", handler.GetAssetPerformanceHandler).Methods("GET")
 
 	// Fees routes
-	api.HandleFunc("/accounts/{id}/fees", GetAccountFeesHandler).Methods("GET")
-	api.HandleFunc("/fees", GetGlobalFeesHandler).Methods("GET")
+	api.HandleFunc("/accounts/{id}/fees", handler.GetAccountFeesHandler).Methods("GET")
+	api.HandleFunc("/fees", handler.GetGlobalFeesHandler).Methods("GET")
 
 	// Asset routes
-	api.HandleFunc("/assets/{isin}/price", GetAssetPriceHandler).Methods("GET")
-	api.HandleFunc("/assets/{isin}/history", GetAssetPriceHistoryHandler).Methods("GET")
+	api.HandleFunc("/assets/{isin}/price", handler.GetAssetPriceHandler).Methods("GET")
+	api.HandleFunc("/assets/{isin}/history", handler.GetAssetPriceHistoryHandler).Methods("GET")
 
 	return router
 }

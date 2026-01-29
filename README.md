@@ -50,12 +50,22 @@ Créer un fichier `.env` à partir de `.env.example` :
 cp .env.example .env
 ```
 
+Générer une clé de chiffrement sécurisée (32 bytes en hexadécimal) :
+
+```bash
+# Avec OpenSSL
+openssl rand -hex 32
+
+# Ou avec Go
+go run -c 'package main; import ("crypto/rand"; "encoding/hex"; "fmt"); func main() { key := make([]byte, 32); rand.Read(key); fmt.Println(hex.EncodeToString(key)) }'
+```
+
 Éditer `.env` avec vos configurations :
 
 ```env
 DATABASE_URL=postgresql://valhafin:valhafin_dev_password@localhost:5432/valhafin_dev?sslmode=disable
 PORT=8080
-ENCRYPTION_KEY=your_32_byte_hex_key_here
+ENCRYPTION_KEY=your_generated_32_byte_hex_key_here
 ```
 
 Installer les dépendances Go :
@@ -64,13 +74,20 @@ Installer les dépendances Go :
 go mod download
 ```
 
-Démarrer le backend :
+Démarrer le serveur API :
 
 ```bash
 go run main.go
 ```
 
-Le backend sera accessible sur http://localhost:8080
+Le serveur API sera accessible sur http://localhost:8080
+
+**Endpoints disponibles :**
+- `GET /health` - Health check
+- `POST /api/accounts` - Créer un compte
+- `GET /api/accounts` - Lister les comptes
+- `GET /api/accounts/:id` - Détails d'un compte
+- `DELETE /api/accounts/:id` - Supprimer un compte
 
 ### 3. Configuration du frontend
 

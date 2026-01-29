@@ -42,20 +42,20 @@ Ce plan d'implémentation transforme le design en étapes concrètes de dévelop
     - **Propriété 22: Round-trip chiffrement/déchiffrement**
     - **Valide: Exigences 1.5**
 
-- [ ] 4. API REST - Gestion des comptes
-  - [ ] 4.1 Implémenter les endpoints de gestion des comptes
+- [x] 4. API REST - Gestion des comptes
+  - [x] 4.1 Implémenter les endpoints de gestion des comptes
     - POST /api/accounts - Créer un compte avec chiffrement des credentials
     - GET /api/accounts - Lister tous les comptes
     - GET /api/accounts/:id - Détails d'un compte
     - DELETE /api/accounts/:id - Supprimer un compte avec cascade
     - _Exigences: 1.1, 1.2, 1.3, 1.5, 1.6_
   
-  - [ ] 4.2 Implémenter la validation des entrées pour les comptes
+  - [x] 4.2 Implémenter la validation des entrées pour les comptes
     - Valider le format des identifiants selon la plateforme
     - Valider les champs requis
     - _Exigences: 7.3_
   
-  - [ ] 4.3 Écrire les tests de propriété pour la gestion des comptes
+  - [x] 4.3 Écrire les tests de propriété pour la gestion des comptes
     - **Propriété 1: Création de compte avec chiffrement**
     - **Propriété 2: Rejet des identifiants invalides**
     - **Propriété 3: Suppression en cascade**
