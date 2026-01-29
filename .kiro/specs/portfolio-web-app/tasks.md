@@ -86,20 +86,20 @@ Ce plan d'implémentation transforme le design en étapes concrètes de dévelop
     - **Propriété 6: Gestion d'erreur de synchronisation**
     - **Valide: Exigences 2.1-2.5**
 
-- [ ] 7. Service de récupération des prix (PriceService)
-  - [ ] 7.1 Implémenter le PriceService avec Yahoo Finance
+- [x] 7. Service de récupération des prix (PriceService)
+  - [x] 7.1 Implémenter le PriceService avec Yahoo Finance
     - Créer l'interface PriceService
     - Implémenter YahooFinancePriceService avec cache
     - Implémenter la conversion ISIN → symbole Yahoo Finance
     - Gérer les erreurs avec fallback sur dernier prix connu
     - _Exigences: 10.1, 10.2, 10.3, 10.5_
   
-  - [ ] 7.2 Implémenter les endpoints de prix
+  - [x] 7.2 Implémenter les endpoints de prix
     - GET /api/assets/:isin/price - Prix actuel d'un actif
     - GET /api/assets/:isin/history - Historique des prix
     - _Exigences: 10.3, 10.6_
   
-  - [ ] 7.3 Écrire les tests de propriété pour le service de prix
+  - [x] 7.3 Écrire les tests de propriété pour le service de prix
     - **Propriété 13: Identification par ISIN**
     - **Propriété 14: Récupération et stockage des prix**
     - **Propriété 15: Fallback sur dernier prix connu**

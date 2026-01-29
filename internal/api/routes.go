@@ -3,6 +3,7 @@ package api
 import (
 	"valhafin/internal/repository/database"
 	"valhafin/internal/service/encryption"
+	"valhafin/internal/service/price"
 	"valhafin/internal/service/sync"
 
 	"github.com/gorilla/mux"
@@ -18,8 +19,11 @@ func SetupRoutes(db *database.DB, encryptionService *encryption.EncryptionServic
 	// Create sync service
 	syncService := sync.NewService(db, scraperFactory, encryptionService)
 
+	// Create price service
+	priceService := price.NewYahooFinanceService(db)
+
 	// Create handler with dependencies
-	handler := NewHandler(db, encryptionService, syncService)
+	handler := NewHandler(db, encryptionService, syncService, priceService)
 
 	// Apply middleware
 	router.Use(CORSMiddleware)

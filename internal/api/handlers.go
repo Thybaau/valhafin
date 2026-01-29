@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	"time"
 	"valhafin/internal/domain/models"
 	"valhafin/internal/repository/database"
 	encryptionsvc "valhafin/internal/service/encryption"
+	"valhafin/internal/service/price"
 	"valhafin/internal/service/sync"
 
 	"github.com/gorilla/mux"
@@ -27,19 +29,21 @@ type ErrorDetail struct {
 
 // Handler holds dependencies for API handlers
 type Handler struct {
-	DB          *database.DB
-	Encryption  *encryptionsvc.EncryptionService
-	Validator   *CredentialsValidator
-	SyncService *sync.Service
+	DB           *database.DB
+	Encryption   *encryptionsvc.EncryptionService
+	Validator    *CredentialsValidator
+	SyncService  *sync.Service
+	PriceService price.Service
 }
 
 // NewHandler creates a new Handler with dependencies
-func NewHandler(db *database.DB, encryptionService *encryptionsvc.EncryptionService, syncService *sync.Service) *Handler {
+func NewHandler(db *database.DB, encryptionService *encryptionsvc.EncryptionService, syncService *sync.Service, priceService price.Service) *Handler {
 	return &Handler{
-		DB:          db,
-		Encryption:  encryptionService,
-		Validator:   NewCredentialsValidator(),
-		SyncService: syncService,
+		DB:           db,
+		Encryption:   encryptionService,
+		Validator:    NewCredentialsValidator(),
+		SyncService:  syncService,
+		PriceService: priceService,
 	}
 }
 
@@ -292,11 +296,88 @@ func (h *Handler) GetGlobalFeesHandler(w http.ResponseWriter, r *http.Request) {
 	respondError(w, http.StatusNotImplemented, "NOT_IMPLEMENTED", "Not implemented yet", nil)
 }
 
-// Asset handlers (stubs for now)
+// Asset handlers
+
+// GetAssetPriceHandler retrieves the current price for an asset by ISIN
 func (h *Handler) GetAssetPriceHandler(w http.ResponseWriter, r *http.Request) {
-	respondError(w, http.StatusNotImplemented, "NOT_IMPLEMENTED", "Not implemented yet", nil)
+	vars := mux.Vars(r)
+	isin := vars["isin"]
+
+	if isin == "" {
+		respondError(w, http.StatusBadRequest, "INVALID_REQUEST", "ISIN is required", nil)
+		return
+	}
+
+	// Get current price from price service
+	price, err := h.PriceService.GetCurrentPrice(isin)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			respondError(w, http.StatusNotFound, "NOT_FOUND", "Asset not found", nil)
+			return
+		}
+		respondError(w, http.StatusInternalServerError, "PRICE_ERROR", "Failed to retrieve price", map[string]string{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	respondJSON(w, http.StatusOK, price)
 }
 
+// GetAssetPriceHistoryHandler retrieves historical prices for an asset
 func (h *Handler) GetAssetPriceHistoryHandler(w http.ResponseWriter, r *http.Request) {
-	respondError(w, http.StatusNotImplemented, "NOT_IMPLEMENTED", "Not implemented yet", nil)
+	vars := mux.Vars(r)
+	isin := vars["isin"]
+
+	if isin == "" {
+		respondError(w, http.StatusBadRequest, "INVALID_REQUEST", "ISIN is required", nil)
+		return
+	}
+
+	// Parse query parameters
+	startDateStr := r.URL.Query().Get("start_date")
+	endDateStr := r.URL.Query().Get("end_date")
+
+	// Default to last 30 days if not specified
+	endDate := time.Now()
+	startDate := endDate.AddDate(0, 0, -30)
+
+	if startDateStr != "" {
+		parsed, err := time.Parse("2006-01-02", startDateStr)
+		if err != nil {
+			respondError(w, http.StatusBadRequest, "INVALID_DATE", "Invalid start_date format (use YYYY-MM-DD)", nil)
+			return
+		}
+		startDate = parsed
+	}
+
+	if endDateStr != "" {
+		parsed, err := time.Parse("2006-01-02", endDateStr)
+		if err != nil {
+			respondError(w, http.StatusBadRequest, "INVALID_DATE", "Invalid end_date format (use YYYY-MM-DD)", nil)
+			return
+		}
+		endDate = parsed
+	}
+
+	// Validate date range
+	if startDate.After(endDate) {
+		respondError(w, http.StatusBadRequest, "INVALID_DATE_RANGE", "start_date must be before end_date", nil)
+		return
+	}
+
+	// Get price history from price service
+	prices, err := h.PriceService.GetPriceHistory(isin, startDate, endDate)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			respondError(w, http.StatusNotFound, "NOT_FOUND", "Asset not found", nil)
+			return
+		}
+		respondError(w, http.StatusInternalServerError, "PRICE_ERROR", "Failed to retrieve price history", map[string]string{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	respondJSON(w, http.StatusOK, prices)
 }
