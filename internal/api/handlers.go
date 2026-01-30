@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 	"valhafin/internal/domain/models"
@@ -264,13 +266,228 @@ func (h *Handler) SyncAccountHandler(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, result)
 }
 
-// Transaction handlers (stubs for now)
-func (h *Handler) GetAccountTransactionsHandler(w http.ResponseWriter, r *http.Request) {
-	respondJSON(w, http.StatusOK, []interface{}{})
+// Transaction handlers
+
+// TransactionResponse represents a paginated transaction response
+type TransactionResponse struct {
+	Transactions []models.Transaction `json:"transactions"`
+	Total        int                  `json:"total"`
+	Page         int                  `json:"page"`
+	Limit        int                  `json:"limit"`
+	TotalPages   int                  `json:"total_pages"`
 }
 
+// GetAccountTransactionsHandler retrieves transactions for a specific account with filters
+func (h *Handler) GetAccountTransactionsHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	accountID := vars["id"]
+
+	if accountID == "" {
+		respondError(w, http.StatusBadRequest, "INVALID_REQUEST", "Account ID is required", nil)
+		return
+	}
+
+	// Check if account exists and get platform
+	account, err := h.DB.GetAccountByID(accountID)
+	if err != nil {
+		if err == sql.ErrNoRows || (err != nil && strings.Contains(err.Error(), "no rows")) {
+			respondError(w, http.StatusNotFound, "NOT_FOUND", "Account not found", nil)
+			return
+		}
+		respondError(w, http.StatusInternalServerError, "DATABASE_ERROR", "Failed to retrieve account", nil)
+		return
+	}
+
+	// Parse query parameters
+	filter := h.parseTransactionFilters(r)
+	filter.AccountID = accountID
+
+	// Get sort parameters
+	sortBy := r.URL.Query().Get("sort_by")
+	sortOrder := r.URL.Query().Get("sort_order")
+
+	// Validate sort parameters
+	if sortBy != "" && sortBy != "timestamp" && sortBy != "amount" {
+		respondError(w, http.StatusBadRequest, "INVALID_SORT", "sort_by must be 'timestamp' or 'amount'", nil)
+		return
+	}
+	if sortOrder != "" && sortOrder != "asc" && sortOrder != "desc" {
+		respondError(w, http.StatusBadRequest, "INVALID_SORT", "sort_order must be 'asc' or 'desc'", nil)
+		return
+	}
+
+	// Get transactions with filters
+	transactions, err := h.DB.GetTransactionsByAccountWithSort(accountID, account.Platform, filter, sortBy, sortOrder)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "DATABASE_ERROR", "Failed to retrieve transactions", map[string]string{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	// Get total count for pagination
+	total, err := h.DB.CountTransactions(account.Platform, filter)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "DATABASE_ERROR", "Failed to count transactions", nil)
+		return
+	}
+
+	// Calculate total pages
+	totalPages := 0
+	if filter.Limit > 0 {
+		totalPages = (total + filter.Limit - 1) / filter.Limit
+	}
+
+	response := TransactionResponse{
+		Transactions: transactions,
+		Total:        total,
+		Page:         filter.Page,
+		Limit:        filter.Limit,
+		TotalPages:   totalPages,
+	}
+
+	respondJSON(w, http.StatusOK, response)
+}
+
+// GetAllTransactionsHandler retrieves all transactions across all accounts with filters
 func (h *Handler) GetAllTransactionsHandler(w http.ResponseWriter, r *http.Request) {
-	respondJSON(w, http.StatusOK, []interface{}{})
+	// Parse query parameters
+	filter := h.parseTransactionFilters(r)
+
+	// Get sort parameters
+	sortBy := r.URL.Query().Get("sort_by")
+	sortOrder := r.URL.Query().Get("sort_order")
+
+	// Validate sort parameters
+	if sortBy != "" && sortBy != "timestamp" && sortBy != "amount" {
+		respondError(w, http.StatusBadRequest, "INVALID_SORT", "sort_by must be 'timestamp' or 'amount'", nil)
+		return
+	}
+	if sortOrder != "" && sortOrder != "asc" && sortOrder != "desc" {
+		respondError(w, http.StatusBadRequest, "INVALID_SORT", "sort_order must be 'asc' or 'desc'", nil)
+		return
+	}
+
+	// Get all accounts to query all platforms
+	accounts, err := h.DB.GetAllAccounts()
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "DATABASE_ERROR", "Failed to retrieve accounts", nil)
+		return
+	}
+
+	// Collect transactions from all platforms
+	allTransactions := []models.Transaction{}
+	totalCount := 0
+
+	// Get unique platforms
+	platforms := make(map[string]bool)
+	for _, account := range accounts {
+		platforms[account.Platform] = true
+	}
+
+	// Query each platform
+	for platform := range platforms {
+		transactions, err := h.DB.GetAllTransactionsWithSort(platform, filter, sortBy, sortOrder)
+		if err != nil {
+			// Log error but continue with other platforms
+			continue
+		}
+		allTransactions = append(allTransactions, transactions...)
+
+		count, err := h.DB.CountTransactions(platform, filter)
+		if err == nil {
+			totalCount += count
+		}
+	}
+
+	// Sort combined results if needed
+	if sortBy != "" {
+		h.sortTransactions(allTransactions, sortBy, sortOrder)
+	}
+
+	// Apply pagination to combined results
+	start := 0
+	end := len(allTransactions)
+	if filter.Limit > 0 && filter.Page > 0 {
+		start = (filter.Page - 1) * filter.Limit
+		end = start + filter.Limit
+		if start > len(allTransactions) {
+			start = len(allTransactions)
+		}
+		if end > len(allTransactions) {
+			end = len(allTransactions)
+		}
+	}
+
+	paginatedTransactions := allTransactions[start:end]
+
+	// Calculate total pages
+	totalPages := 0
+	if filter.Limit > 0 {
+		totalPages = (totalCount + filter.Limit - 1) / filter.Limit
+	}
+
+	response := TransactionResponse{
+		Transactions: paginatedTransactions,
+		Total:        totalCount,
+		Page:         filter.Page,
+		Limit:        filter.Limit,
+		TotalPages:   totalPages,
+	}
+
+	respondJSON(w, http.StatusOK, response)
+}
+
+// parseTransactionFilters parses query parameters into a TransactionFilter
+func (h *Handler) parseTransactionFilters(r *http.Request) database.TransactionFilter {
+	filter := database.TransactionFilter{
+		StartDate:       r.URL.Query().Get("start_date"),
+		EndDate:         r.URL.Query().Get("end_date"),
+		ISIN:            r.URL.Query().Get("asset"),
+		TransactionType: r.URL.Query().Get("type"),
+		Page:            1,
+		Limit:           50, // Default limit
+	}
+
+	// Parse page
+	if pageStr := r.URL.Query().Get("page"); pageStr != "" {
+		if page, err := strconv.Atoi(pageStr); err == nil && page > 0 {
+			filter.Page = page
+		}
+	}
+
+	// Parse limit
+	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+		if limit, err := strconv.Atoi(limitStr); err == nil && limit > 0 {
+			filter.Limit = limit
+		}
+	}
+
+	return filter
+}
+
+// sortTransactions sorts a slice of transactions
+func (h *Handler) sortTransactions(transactions []models.Transaction, sortBy, sortOrder string) {
+	if sortBy == "" {
+		return
+	}
+
+	sort.Slice(transactions, func(i, j int) bool {
+		var less bool
+		switch sortBy {
+		case "timestamp":
+			less = transactions[i].Timestamp < transactions[j].Timestamp
+		case "amount":
+			less = transactions[i].AmountValue < transactions[j].AmountValue
+		default:
+			return false
+		}
+
+		if sortOrder == "desc" {
+			return !less
+		}
+		return less
+	})
 }
 
 func (h *Handler) ImportCSVHandler(w http.ResponseWriter, r *http.Request) {

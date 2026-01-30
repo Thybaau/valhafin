@@ -229,6 +229,90 @@ func (db *DB) GetTransactionsByAccount(accountID string, platform string, filter
 	return transactions, nil
 }
 
+// GetTransactionsByAccountWithSort retrieves transactions for a specific account with custom sorting
+func (db *DB) GetTransactionsByAccountWithSort(accountID string, platform string, filter TransactionFilter, sortBy, sortOrder string) ([]models.Transaction, error) {
+	tableName := getTransactionTableName(platform)
+
+	query := fmt.Sprintf(`
+		SELECT 
+			id, account_id, timestamp, title, icon, avatar, subtitle,
+			amount_currency, amount_value, amount_fraction, status,
+			action_type, action_payload, cash_account_number, hidden, deleted,
+			actions, dividend_per_share, taxes, total, shares, share_price,
+			fees, amount, isin, quantity, transaction_type, metadata
+		FROM %s
+		WHERE account_id = $1
+	`, tableName)
+
+	args := []interface{}{accountID}
+	argCount := 1
+
+	// Apply filters
+	if filter.StartDate != "" {
+		argCount++
+		query += fmt.Sprintf(" AND timestamp >= $%d", argCount)
+		args = append(args, filter.StartDate)
+	}
+
+	if filter.EndDate != "" {
+		argCount++
+		query += fmt.Sprintf(" AND timestamp <= $%d", argCount)
+		args = append(args, filter.EndDate)
+	}
+
+	if filter.ISIN != "" {
+		argCount++
+		query += fmt.Sprintf(" AND isin = $%d", argCount)
+		args = append(args, filter.ISIN)
+	}
+
+	if filter.TransactionType != "" {
+		argCount++
+		query += fmt.Sprintf(" AND transaction_type = $%d", argCount)
+		args = append(args, filter.TransactionType)
+	}
+
+	// Apply sorting
+	if sortBy == "timestamp" {
+		if sortOrder == "asc" {
+			query += " ORDER BY timestamp ASC"
+		} else {
+			query += " ORDER BY timestamp DESC"
+		}
+	} else if sortBy == "amount" {
+		if sortOrder == "asc" {
+			query += " ORDER BY amount_value ASC"
+		} else {
+			query += " ORDER BY amount_value DESC"
+		}
+	} else {
+		// Default sort
+		query += " ORDER BY timestamp DESC"
+	}
+
+	// Apply pagination
+	if filter.Limit > 0 {
+		argCount++
+		query += fmt.Sprintf(" LIMIT $%d", argCount)
+		args = append(args, filter.Limit)
+
+		if filter.Page > 0 {
+			argCount++
+			offset := (filter.Page - 1) * filter.Limit
+			query += fmt.Sprintf(" OFFSET $%d", argCount)
+			args = append(args, offset)
+		}
+	}
+
+	var transactions []models.Transaction
+	err := db.Select(&transactions, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get transactions: %w", err)
+	}
+
+	return transactions, nil
+}
+
 // GetAllTransactions retrieves all transactions across all accounts for a platform
 func (db *DB) GetAllTransactions(platform string, filter TransactionFilter) ([]models.Transaction, error) {
 	tableName := getTransactionTableName(platform)
@@ -288,6 +372,77 @@ func (db *DB) GetAllTransactions(platform string, filter TransactionFilter) ([]m
 		}
 	}
 
+	var transactions []models.Transaction
+	err := db.Select(&transactions, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get transactions: %w", err)
+	}
+
+	return transactions, nil
+}
+
+// GetAllTransactionsWithSort retrieves all transactions across all accounts for a platform with custom sorting
+func (db *DB) GetAllTransactionsWithSort(platform string, filter TransactionFilter, sortBy, sortOrder string) ([]models.Transaction, error) {
+	tableName := getTransactionTableName(platform)
+
+	query := fmt.Sprintf(`
+		SELECT 
+			id, account_id, timestamp, title, icon, avatar, subtitle,
+			amount_currency, amount_value, amount_fraction, status,
+			action_type, action_payload, cash_account_number, hidden, deleted,
+			actions, dividend_per_share, taxes, total, shares, share_price,
+			fees, amount, isin, quantity, transaction_type, metadata
+		FROM %s
+		WHERE 1=1
+	`, tableName)
+
+	args := []interface{}{}
+	argCount := 0
+
+	// Apply filters
+	if filter.StartDate != "" {
+		argCount++
+		query += fmt.Sprintf(" AND timestamp >= $%d", argCount)
+		args = append(args, filter.StartDate)
+	}
+
+	if filter.EndDate != "" {
+		argCount++
+		query += fmt.Sprintf(" AND timestamp <= $%d", argCount)
+		args = append(args, filter.EndDate)
+	}
+
+	if filter.ISIN != "" {
+		argCount++
+		query += fmt.Sprintf(" AND isin = $%d", argCount)
+		args = append(args, filter.ISIN)
+	}
+
+	if filter.TransactionType != "" {
+		argCount++
+		query += fmt.Sprintf(" AND transaction_type = $%d", argCount)
+		args = append(args, filter.TransactionType)
+	}
+
+	// Apply sorting
+	if sortBy == "timestamp" {
+		if sortOrder == "asc" {
+			query += " ORDER BY timestamp ASC"
+		} else {
+			query += " ORDER BY timestamp DESC"
+		}
+	} else if sortBy == "amount" {
+		if sortOrder == "asc" {
+			query += " ORDER BY amount_value ASC"
+		} else {
+			query += " ORDER BY amount_value DESC"
+		}
+	} else {
+		// Default sort
+		query += " ORDER BY timestamp DESC"
+	}
+
+	// Don't apply pagination here - let the handler do it for combined results
 	var transactions []models.Transaction
 	err := db.Select(&transactions, query, args...)
 	if err != nil {

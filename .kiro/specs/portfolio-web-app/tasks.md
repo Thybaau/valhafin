@@ -144,8 +144,8 @@ Ce plan d'implémentation transforme le design en étapes concrètes de dévelop
     - **Propriété 16: Calcul de valeur actuelle**
     - **Valide: Exigences 4.4, 4.6, 10.7**
 
-- [ ] 11. API REST - Transactions et filtres
-  - [ ] 11.1 Implémenter les endpoints de transactions
+- [x] 11. API REST - Transactions et filtres
+  - [x] 11.1 Implémenter les endpoints de transactions
     - GET /api/accounts/:id/transactions - Lister les transactions d'un compte
     - GET /api/transactions - Lister toutes les transactions
     - Implémenter les filtres (date, type, actif)
@@ -153,7 +153,7 @@ Ce plan d'implémentation transforme le design en étapes concrètes de dévelop
     - Implémenter la pagination (50 par page)
     - _Exigences: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7_
   
-  - [ ] 11.2 Écrire les tests de propriété pour les transactions
+  - [x] 11.2 Écrire les tests de propriété pour les transactions
     - **Propriété 7: Filtrage des transactions**
     - **Propriété 8: Tri des transactions**
     - **Propriété 9: Pagination des transactions**
