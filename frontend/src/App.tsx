@@ -1,5 +1,10 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { BrowserRouter } from 'react-router-dom'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import Layout from './components/Layout/Layout'
+import Dashboard from './pages/Dashboard'
+import Transactions from './pages/Transactions'
+import Performance from './pages/Performance'
+import Fees from './pages/Fees'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -14,25 +19,14 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <div className="min-h-screen" style={{ backgroundColor: 'var(--color-background-primary)' }}>
-          <div className="container mx-auto px-4 py-8">
-            <h1 className="text-4xl font-bold mb-4" style={{ color: 'var(--color-accent-primary)' }}>
-              Valhafin
-            </h1>
-            <p style={{ color: 'var(--color-text-secondary)' }}>
-              Application Web de Gestion de Portefeuille Financier
-            </p>
-            <div className="mt-8 card">
-              <h2 className="text-2xl font-semibold mb-4">Bienvenue</h2>
-              <p className="mb-4" style={{ color: 'var(--color-text-secondary)' }}>
-                L'infrastructure de base est configurée. Le développement des fonctionnalités commence maintenant.
-              </p>
-              <button className="btn-primary">
-                Commencer
-              </button>
-            </div>
-          </div>
-        </div>
+        <Routes>
+          <Route path="/" element={<Layout />}>
+            <Route index element={<Dashboard />} />
+            <Route path="transactions" element={<Transactions />} />
+            <Route path="performance" element={<Performance />} />
+            <Route path="fees" element={<Fees />} />
+          </Route>
+        </Routes>
       </BrowserRouter>
     </QueryClientProvider>
   )

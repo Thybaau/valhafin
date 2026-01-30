@@ -209,8 +209,8 @@ Ce plan d'implémentation transforme le design en étapes concrètes de dévelop
   - Vérifier que les logs sont créés correctement
   - Demander à l'utilisateur si des questions se posent
 
-- [ ] 16. Frontend - Configuration et structure de base
-  - [ ] 16.1 Configurer le projet React avec TypeScript
+- [x] 16. Frontend - Configuration et structure de base
+  - [x] 16.1 Configurer le projet React avec TypeScript
     - Initialiser le projet avec Vite
     - Configurer Tailwind CSS avec le thème sombre personnalisé
     - Configurer React Router pour la navigation
@@ -218,14 +218,14 @@ Ce plan d'implémentation transforme le design en étapes concrètes de dévelop
     - Configurer Axios pour les appels API
     - _Exigences: 6.1, 6.2, 6.3_
   
-  - [ ] 16.2 Créer la structure de composants de base
+  - [x] 16.2 Créer la structure de composants de base
     - Créer le Layout avec Sidebar et Header
     - Créer les composants communs (LoadingSpinner, ErrorMessage, Pagination)
     - Créer les pages principales (Dashboard, Transactions, Performance, Fees)
     - _Exigences: 6.3, 6.6, 6.7_
 
-- [ ] 17. Frontend - Service API et hooks
-  - [ ] 17.1 Créer le client API HTTP
+- [-] 17. Frontend - Service API et hooks
+  - [-] 17.1 Créer le client API HTTP
     - Configurer Axios avec l'URL de base et les intercepteurs
     - Créer les fonctions API pour les comptes
     - Créer les fonctions API pour les transactions
