@@ -224,8 +224,8 @@ Ce plan d'implémentation transforme le design en étapes concrètes de dévelop
     - Créer les pages principales (Dashboard, Transactions, Performance, Fees)
     - _Exigences: 6.3, 6.6, 6.7_
 
-- [-] 17. Frontend - Service API et hooks
-  - [-] 17.1 Créer le client API HTTP
+- [x] 17. Frontend - Service API et hooks
+  - [x] 17.1 Créer le client API HTTP
     - Configurer Axios avec l'URL de base et les intercepteurs
     - Créer les fonctions API pour les comptes
     - Créer les fonctions API pour les transactions
@@ -233,7 +233,7 @@ Ce plan d'implémentation transforme le design en étapes concrètes de dévelop
     - Créer les fonctions API pour les frais
     - _Exigences: 7.1_
   
-  - [ ] 17.2 Créer les hooks personnalisés avec React Query
+  - [x] 17.2 Créer les hooks personnalisés avec React Query
     - useAccounts, useTransactions, usePerformance, useFees
     - Configurer le cache et les stratégies de refetch
     - _Exigences: 7.1_
