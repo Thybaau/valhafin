@@ -175,20 +175,22 @@ func (s *PerformanceService) calculatePerformance(transactions []models.Transact
 		totalFees += fees
 
 		// Skip if no ISIN (e.g., pure fee transactions)
-		if tx.ISIN == "" {
+		if tx.ISIN == nil || *tx.ISIN == "" {
 			continue
 		}
 
+		isin := *tx.ISIN
+
 		// Initialize holding if not exists
-		if _, exists := assetHoldings[tx.ISIN]; !exists {
-			assetHoldings[tx.ISIN] = &assetHolding{
-				ISIN:     tx.ISIN,
+		if _, exists := assetHoldings[isin]; !exists {
+			assetHoldings[isin] = &assetHolding{
+				ISIN:     isin,
 				Quantity: 0,
 				Invested: 0,
 			}
 		}
 
-		holding := assetHoldings[tx.ISIN]
+		holding := assetHoldings[isin]
 
 		// Process transaction based on type
 		switch tx.TransactionType {

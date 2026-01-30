@@ -10,7 +10,7 @@ import (
 type Asset struct {
 	ISIN        string    `json:"isin" db:"isin"`
 	Name        string    `json:"name" db:"name"`
-	Symbol      string    `json:"symbol" db:"symbol"`
+	Symbol      *string   `json:"symbol,omitempty" db:"symbol"`
 	Type        string    `json:"type" db:"type"` // "stock", "etf", "crypto"
 	Currency    string    `json:"currency" db:"currency"`
 	LastUpdated time.Time `json:"last_updated" db:"last_updated"`

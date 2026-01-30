@@ -210,12 +210,18 @@ func (s *Scraper) convertTimelineTransactions(timelineTransactions []TimelineTra
 		// Determine transaction type
 		transactionType := s.determineTransactionTypeFromIcon(tt.Icon, tt.Title)
 
+		// Convert ISIN to pointer (nil if empty)
+		var isinPtr *string
+		if isin != "" {
+			isinPtr = &isin
+		}
+
 		tx := models.Transaction{
 			ID:              tt.ID,
 			Timestamp:       timestamp.Format(time.RFC3339),
 			Title:           tt.Title,
 			Subtitle:        tt.Subtitle,
-			ISIN:            isin,
+			ISIN:            isinPtr,
 			AmountValue:     amountValue,
 			AmountCurrency:  amountCurrency,
 			Fees:            "0",
@@ -334,9 +340,9 @@ func (s *Scraper) parseTimelineEvents(events []TimelineEvent) []models.Transacti
 		transactionType := s.determineTransactionTypeFromEvent(event)
 
 		// Extract ISIN from action payload if available
-		isin := ""
-		if event.Data.Action.Type == "timelineDetail" {
-			isin = event.Data.Action.Payload
+		var isinPtr *string
+		if event.Data.Action.Type == "timelineDetail" && event.Data.Action.Payload != "" {
+			isinPtr = &event.Data.Action.Payload
 		}
 
 		tx := models.Transaction{
@@ -344,7 +350,7 @@ func (s *Scraper) parseTimelineEvents(events []TimelineEvent) []models.Transacti
 			Timestamp:       timestamp.Format(time.RFC3339),
 			Title:           event.Data.Title,
 			Subtitle:        event.Data.Body,
-			ISIN:            isin,
+			ISIN:            isinPtr,
 			AmountValue:     event.Data.CashChangeAmount,
 			AmountCurrency:  "EUR", // Trade Republic uses EUR
 			Fees:            "0",   // Fees are included in the cash change amount
@@ -491,12 +497,19 @@ func (s *Scraper) parseCSVTransactions(csvData []byte) ([]models.Transaction, er
 			quantity, _ = strconv.ParseFloat(quantityStr, 64)
 		}
 
+		// Convert ISIN to pointer
+		isinStr := record[3]
+		var isinPtr *string
+		if isinStr != "" {
+			isinPtr = &isinStr
+		}
+
 		tx := models.Transaction{
 			ID:              fmt.Sprintf("tr_%d", timestamp.Unix()),
 			Timestamp:       timestamp.Format(time.RFC3339),
 			Title:           record[1],
 			Subtitle:        record[2],
-			ISIN:            record[3],
+			ISIN:            isinPtr,
 			AmountValue:     amount,
 			AmountCurrency:  record[5],
 			Fees:            feesStr,

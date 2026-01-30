@@ -15,7 +15,7 @@ export function useTransactions(filters?: TransactionFilters) {
   return useQuery({
     queryKey: transactionKeys.list(filters),
     queryFn: () => transactionsApi.getAll(filters),
-    staleTime: 2 * 60 * 1000, // 2 minutes
+    staleTime: 30 * 1000, // 30 seconds - shorter to ensure fresh data on page change
   })
 }
 

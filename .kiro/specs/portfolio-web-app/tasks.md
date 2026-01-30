@@ -253,8 +253,8 @@ Ce plan d'implémentation transforme le design en étapes concrètes de dévelop
     - Tester la suppression
     - _Exigences: 1.1-1.6_
 
-- [ ] 19. Frontend - Liste des transactions
-  - [ ] 19.1 Implémenter la page des transactions
+- [x] 19. Frontend - Liste des transactions
+  - [x] 19.1 Implémenter la page des transactions
     - Créer TransactionTable avec colonnes (Date, Actif, Type, Montant, Frais)
     - Créer TransactionFilters pour les filtres (date, type, actif)
     - Implémenter le tri cliquable sur les colonnes
@@ -262,7 +262,7 @@ Ce plan d'implémentation transforme le design en étapes concrètes de dévelop
     - Implémenter le clic sur un actif pour ouvrir AssetPerformanceModal
     - _Exigences: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 4.8_
   
-  - [ ] 19.2 Créer ImportCSVModal pour l'import de transactions
+  - [x] 19.2 Créer ImportCSVModal pour l'import de transactions
     - Implémenter l'upload de fichier CSV
     - Afficher le résumé d'import
     - Gérer les erreurs d'import

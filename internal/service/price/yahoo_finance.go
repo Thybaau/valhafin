@@ -70,8 +70,14 @@ func (s *YahooFinanceService) GetCurrentPrice(isin string) (*models.AssetPrice, 
 		return s.fetchAndStorePrice(isin, "")
 	}
 
+	// Dereference symbol pointer
+	symbol := ""
+	if asset.Symbol != nil {
+		symbol = *asset.Symbol
+	}
+
 	// Fetch price from Yahoo Finance
-	price, err := s.fetchAndStorePrice(isin, asset.Symbol)
+	price, err := s.fetchAndStorePrice(isin, symbol)
 	if err != nil {
 		// Fallback: try to get last known price from database
 		lastPrice, dbErr := s.db.GetLatestAssetPrice(isin)
@@ -103,8 +109,14 @@ func (s *YahooFinanceService) GetPriceHistory(isin string, startDate, endDate ti
 		return nil, fmt.Errorf("asset not found: %w", err)
 	}
 
+	// Dereference symbol pointer
+	symbol := ""
+	if asset.Symbol != nil {
+		symbol = *asset.Symbol
+	}
+
 	// Convert ISIN to Yahoo symbol
-	symbol := s.isinMapper.GetSymbol(isin, asset.Symbol)
+	symbol = s.isinMapper.GetSymbol(isin, symbol)
 	if symbol == "" {
 		symbol = s.convertISINToSymbol(isin)
 	}

@@ -1,85 +1,99 @@
+import { useState, useCallback } from 'react'
 import Header from '../components/Layout/Header'
+import TransactionTable from '../components/Transactions/TransactionTable'
+import TransactionFilters from '../components/Transactions/TransactionFilters'
+import AssetPerformanceModal from '../components/Transactions/AssetPerformanceModal'
+import ImportCSVModal from '../components/Transactions/ImportCSVModal'
+import Pagination from '../components/common/Pagination'
+import { useTransactions } from '../hooks/useTransactions'
+import type { FilterValues } from '../components/Transactions/TransactionFilters'
 
 export default function Transactions() {
+  const [filters, setFilters] = useState<FilterValues>({})
+  const [page, setPage] = useState(1)
+  const [sortBy, setSortBy] = useState<string>('timestamp')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  const [selectedAsset, setSelectedAsset] = useState<string | null>(null)
+  const [showImportModal, setShowImportModal] = useState(false)
+
+  const limit = 50
+
+  const { data, isLoading } = useTransactions({
+    ...filters,
+    page,
+    limit,
+    sort_by: sortBy,
+    sort_order: sortOrder,
+  })
+
+  const handleFilterChange = useCallback((newFilters: FilterValues) => {
+    setFilters(newFilters)
+    setPage(1) // Reset to first page when filters change
+  }, [])
+
+  const handleSort = (column: string, direction: 'asc' | 'desc') => {
+    setSortBy(column)
+    setSortOrder(direction)
+  }
+
+  const handleAssetClick = (isin: string) => {
+    setSelectedAsset(isin)
+  }
+
+  const handlePageChange = (newPage: number) => {
+    console.log('Page change:', newPage)
+    setPage(newPage)
+  }
+
   return (
     <div>
-      <Header 
-        title="Transactions" 
+      <Header
+        title="Transactions"
         subtitle="Historique de toutes vos transactions"
         actions={
-          <button className="btn-primary">
+          <button
+            className="btn-primary"
+            onClick={() => setShowImportModal(true)}
+          >
             Importer CSV
           </button>
         }
       />
-      
-      <div className="p-8">
-        <div className="card mb-6">
-          <div className="flex flex-wrap gap-4">
-            <div className="flex-1 min-w-[200px]">
-              <label className="block text-sm text-text-muted mb-2">Date de début</label>
-              <input 
-                type="date" 
-                className="input w-full"
-                placeholder="Date de début"
-              />
-            </div>
-            
-            <div className="flex-1 min-w-[200px]">
-              <label className="block text-sm text-text-muted mb-2">Date de fin</label>
-              <input 
-                type="date" 
-                className="input w-full"
-                placeholder="Date de fin"
-              />
-            </div>
-            
-            <div className="flex-1 min-w-[200px]">
-              <label className="block text-sm text-text-muted mb-2">Type</label>
-              <select className="input w-full">
-                <option value="">Tous les types</option>
-                <option value="buy">Achat</option>
-                <option value="sell">Vente</option>
-                <option value="dividend">Dividende</option>
-                <option value="fee">Frais</option>
-              </select>
-            </div>
-            
-            <div className="flex-1 min-w-[200px]">
-              <label className="block text-sm text-text-muted mb-2">Actif</label>
-              <input 
-                type="text" 
-                className="input w-full"
-                placeholder="Rechercher un actif..."
-              />
-            </div>
-          </div>
-        </div>
 
-        <div className="card">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-background-tertiary">
-                  <th className="text-left py-3 px-4 text-text-muted font-medium">Date</th>
-                  <th className="text-left py-3 px-4 text-text-muted font-medium">Actif</th>
-                  <th className="text-left py-3 px-4 text-text-muted font-medium">Type</th>
-                  <th className="text-right py-3 px-4 text-text-muted font-medium">Quantité</th>
-                  <th className="text-right py-3 px-4 text-text-muted font-medium">Montant</th>
-                  <th className="text-right py-3 px-4 text-text-muted font-medium">Frais</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td colSpan={6} className="text-center py-12 text-text-muted">
-                    Aucune transaction trouvée
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+      <div className="p-8">
+        <TransactionFilters
+          onFilterChange={handleFilterChange}
+          initialFilters={filters}
+        />
+
+        <TransactionTable
+          transactions={data?.transactions || []}
+          isLoading={isLoading}
+          onSort={handleSort}
+          onAssetClick={handleAssetClick}
+        />
+
+        {data && data.total_pages > 1 && (
+          <div className="mt-6">
+            <Pagination
+              currentPage={page}
+              totalPages={data.total_pages}
+              onPageChange={handlePageChange}
+            />
           </div>
-        </div>
+        )}
       </div>
+
+      <AssetPerformanceModal
+        isin={selectedAsset || ''}
+        isOpen={!!selectedAsset}
+        onClose={() => setSelectedAsset(null)}
+      />
+
+      <ImportCSVModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+      />
     </div>
   )
 }

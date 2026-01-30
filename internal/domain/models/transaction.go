@@ -34,10 +34,10 @@ type Transaction struct {
 
 	// New fields for database integration
 	AccountID       string  `json:"account_id" db:"account_id"`
-	ISIN            string  `json:"isin,omitempty" db:"isin"`
+	ISIN            *string `json:"isin,omitempty" db:"isin"`
 	Quantity        float64 `json:"quantity,omitempty" db:"quantity"`
 	TransactionType string  `json:"transaction_type,omitempty" db:"transaction_type"` // "buy", "sell", "dividend", "fee"
-	Metadata        string  `json:"metadata,omitempty" db:"metadata"`                 // JSON string for additional platform-specific data
+	Metadata        *string `json:"metadata,omitempty" db:"metadata"`                 // JSON string for additional platform-specific data
 }
 
 // Validate validates the Transaction model

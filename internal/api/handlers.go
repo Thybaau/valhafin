@@ -638,8 +638,10 @@ func (h *Handler) GetAllTransactionsHandler(w http.ResponseWriter, r *http.Reque
 		transactions, err := h.DB.GetAllTransactionsWithSort(platform, filter, sortBy, sortOrder)
 		if err != nil {
 			// Log error but continue with other platforms
+			log.Printf("ERROR: Failed to get transactions for platform %s: %v", platform, err)
 			continue
 		}
+		log.Printf("DEBUG: Found %d transactions for platform %s", len(transactions), platform)
 		allTransactions = append(allTransactions, transactions...)
 
 		count, err := h.DB.CountTransactions(platform, filter)
@@ -958,10 +960,11 @@ func (h *Handler) parseCSVRow(row []string, columnIndices map[string]int, accoun
 		}
 	}
 
-	transaction.ISIN = getColumn("isin")
-	if transaction.ISIN == "" {
+	isinStr := getColumn("isin")
+	if isinStr == "" {
 		return nil, fmt.Errorf("isin is required")
 	}
+	transaction.ISIN = &isinStr
 
 	// Parse amount_value
 	amountStr := getColumn("amount_value")
@@ -985,7 +988,7 @@ func (h *Handler) parseCSVRow(row []string, columnIndices map[string]int, accoun
 	transaction.ID = getColumn("id")
 	if transaction.ID == "" {
 		// Generate ID from timestamp + isin + amount if not provided
-		transaction.ID = fmt.Sprintf("%s_%s_%.2f", transaction.Timestamp, transaction.ISIN, transaction.AmountValue)
+		transaction.ID = fmt.Sprintf("%s_%s_%.2f", transaction.Timestamp, isinStr, transaction.AmountValue)
 	}
 
 	transaction.Title = getColumn("title")
@@ -1044,9 +1047,10 @@ func (h *Handler) parseCSVRow(row []string, columnIndices map[string]int, accoun
 		if err := json.Unmarshal([]byte(metadata), &js); err != nil {
 			// If not valid JSON, wrap it as a JSON string
 			metadataJSON, _ := json.Marshal(map[string]string{"raw": metadata})
-			transaction.Metadata = string(metadataJSON)
+			metadataStr := string(metadataJSON)
+			transaction.Metadata = &metadataStr
 		} else {
-			transaction.Metadata = metadata
+			transaction.Metadata = &metadata
 		}
 	}
 

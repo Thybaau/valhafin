@@ -27,16 +27,16 @@ func (db *DB) CreateTransaction(transaction *models.Transaction, platform string
 	// Ensure the asset exists if ISIN is provided
 	// Convert empty ISIN to NULL for database
 	var isinValue interface{}
-	if transaction.ISIN != "" {
-		isinValue = transaction.ISIN
+	if transaction.ISIN != nil && *transaction.ISIN != "" {
+		isinValue = *transaction.ISIN
 		// Create asset if it doesn't exist
 		_, err := db.Exec(`
 			INSERT INTO assets (isin, name, type, currency)
 			VALUES ($1, $2, $3, $4)
 			ON CONFLICT (isin) DO NOTHING
-		`, transaction.ISIN, "Unknown", "stock", "EUR")
+		`, *transaction.ISIN, "Unknown", "stock", "EUR")
 		if err != nil {
-			return fmt.Errorf("failed to create asset for ISIN %s: %w", transaction.ISIN, err)
+			return fmt.Errorf("failed to create asset for ISIN %s: %w", *transaction.ISIN, err)
 		}
 	} else {
 		isinValue = nil
@@ -45,10 +45,8 @@ func (db *DB) CreateTransaction(transaction *models.Transaction, platform string
 	tableName := getTransactionTableName(platform)
 
 	// Handle metadata - convert empty string to NULL for JSONB
-	var metadata interface{}
-	if transaction.Metadata == "" {
-		metadata = nil
-	} else {
+	var metadata *string
+	if transaction.Metadata != nil && *transaction.Metadata != "" {
 		metadata = transaction.Metadata
 	}
 
@@ -120,8 +118,8 @@ func (db *DB) CreateTransactionsBatch(transactions []models.Transaction, platfor
 	// First, ensure all ISINs exist in the assets table
 	uniqueISINs := make(map[string]bool)
 	for _, transaction := range transactions {
-		if transaction.ISIN != "" {
-			uniqueISINs[transaction.ISIN] = true
+		if transaction.ISIN != nil && *transaction.ISIN != "" {
+			uniqueISINs[*transaction.ISIN] = true
 		}
 	}
 
@@ -166,17 +164,15 @@ func (db *DB) CreateTransactionsBatch(transactions []models.Transaction, platfor
 		}
 
 		// Handle metadata - convert empty string to NULL for JSONB
-		var metadata interface{}
-		if transaction.Metadata == "" {
-			metadata = nil
-		} else {
+		var metadata *string
+		if transaction.Metadata != nil && *transaction.Metadata != "" {
 			metadata = transaction.Metadata
 		}
 
 		// Handle ISIN - convert empty string to NULL
 		var isinValue interface{}
-		if transaction.ISIN != "" {
-			isinValue = transaction.ISIN
+		if transaction.ISIN != nil && *transaction.ISIN != "" {
+			isinValue = *transaction.ISIN
 		} else {
 			isinValue = nil
 		}
