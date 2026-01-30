@@ -1,6 +1,7 @@
 package api
 
 import (
+	"net/http"
 	"time"
 	"valhafin/internal/repository/database"
 	"valhafin/internal/service/encryption"
@@ -49,16 +50,24 @@ func SetupRoutesWithVersion(db *database.DB, encryptionService *encryption.Encry
 	handler.Version = version
 	handler.StartTime = startTime
 
-	// Apply middleware
-	router.Use(RecoveryMiddleware)
+	// Apply middleware (CORS must be first to handle preflight requests)
 	router.Use(CORSMiddleware)
+	router.Use(RecoveryMiddleware)
 	router.Use(LoggingMiddleware)
 
 	// API routes
 	api := router.PathPrefix("/api").Subrouter()
 
+	// Apply CORS middleware to API subrouter as well
+	api.Use(CORSMiddleware)
+
 	// Health check
 	router.HandleFunc("/health", handler.HealthCheckHandler).Methods("GET")
+
+	// Handle OPTIONS requests globally for CORS preflight
+	router.Methods("OPTIONS").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
 
 	// Account routes
 	api.HandleFunc("/accounts", handler.GetAccountsHandler).Methods("GET")
