@@ -20,6 +20,17 @@ export interface SyncResponse {
   message: string
 }
 
+export interface InitSyncResponse {
+  requires_two_factor: boolean
+  process_id?: string
+  message: string
+}
+
+export interface CompleteSyncRequest {
+  process_id: string
+  code: string
+}
+
 export const accountsApi = {
   // Récupérer tous les comptes
   getAll: async (): Promise<Account[]> => {
@@ -44,9 +55,21 @@ export const accountsApi = {
     await apiClient.delete(`/accounts/${id}`)
   },
 
-  // Synchroniser un compte
+  // Synchroniser un compte (pour Binance et Bourse Direct)
   sync: async (id: string): Promise<SyncResponse> => {
     const response = await apiClient.post(`/accounts/${id}/sync`)
+    return response.data
+  },
+
+  // Initier la synchronisation (pour Trade Republic - déclenche 2FA)
+  initSync: async (id: string): Promise<InitSyncResponse> => {
+    const response = await apiClient.post(`/accounts/${id}/sync/init`)
+    return response.data
+  },
+
+  // Compléter la synchronisation avec le code 2FA
+  completeSync: async (id: string, data: CompleteSyncRequest): Promise<SyncResponse> => {
+    const response = await apiClient.post(`/accounts/${id}/sync/complete`, data)
     return response.data
   },
 }

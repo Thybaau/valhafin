@@ -145,7 +145,7 @@ func (s *Service) SyncAccount(accountID string) (*types.SyncResult, error) {
 	return result, nil
 }
 
-// SyncAllAccounts synchronizes all accounts
+// SyncAllAccounts synchronizes all accounts (skips Trade Republic for automatic sync)
 func (s *Service) SyncAllAccounts() ([]types.SyncResult, error) {
 	accounts, err := s.db.GetAllAccounts()
 	if err != nil {
@@ -155,6 +155,12 @@ func (s *Service) SyncAllAccounts() ([]types.SyncResult, error) {
 	results := make([]types.SyncResult, 0, len(accounts))
 
 	for _, account := range accounts {
+		// Skip Trade Republic accounts for automatic sync (requires 2FA)
+		if account.Platform == "traderepublic" {
+			log.Printf("INFO: Skipping automatic sync for Trade Republic account %s (requires 2FA)", account.ID)
+			continue
+		}
+
 		result, err := s.SyncAccount(account.ID)
 		if err != nil {
 			// Continue with other accounts even if one fails
@@ -166,4 +172,13 @@ func (s *Service) SyncAllAccounts() ([]types.SyncResult, error) {
 	}
 
 	return results, nil
+}
+
+// GetScraper returns a scraper for the specified platform
+func (s *Service) GetScraper(platform string) types.Scraper {
+	scraper, err := s.scraperFactory.GetScraper(platform)
+	if err != nil {
+		return nil
+	}
+	return scraper
 }

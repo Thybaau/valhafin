@@ -75,6 +75,8 @@ func SetupRoutesWithVersion(db *database.DB, encryptionService *encryption.Encry
 	api.HandleFunc("/accounts/{id}", handler.GetAccountHandler).Methods("GET")
 	api.HandleFunc("/accounts/{id}", handler.DeleteAccountHandler).Methods("DELETE")
 	api.HandleFunc("/accounts/{id}/sync", handler.SyncAccountHandler).Methods("POST")
+	api.HandleFunc("/accounts/{id}/sync/init", handler.InitSyncHandler).Methods("POST")
+	api.HandleFunc("/accounts/{id}/sync/complete", handler.CompleteSyncHandler).Methods("POST")
 
 	// Transaction routes
 	api.HandleFunc("/accounts/{id}/transactions", handler.GetAccountTransactionsHandler).Methods("GET")

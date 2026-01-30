@@ -66,3 +66,25 @@ export function useSyncAccount() {
     },
   })
 }
+
+// Hook pour initier la synchronisation (Trade Republic 2FA)
+export function useInitSync() {
+  return useMutation({
+    mutationFn: (id: string) => accountsApi.initSync(id),
+  })
+}
+
+// Hook pour compléter la synchronisation avec le code 2FA
+export function useCompleteSync() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: { process_id: string; code: string } }) =>
+      accountsApi.completeSync(id, data),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: accountKeys.detail(id) })
+      queryClient.invalidateQueries({ queryKey: ['transactions'] })
+      queryClient.invalidateQueries({ queryKey: ['performance'] })
+    },
+  })
+}

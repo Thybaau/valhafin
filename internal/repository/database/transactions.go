@@ -24,6 +24,24 @@ func (db *DB) CreateTransaction(transaction *models.Transaction, platform string
 		return fmt.Errorf("validation failed: %w", err)
 	}
 
+	// Ensure the asset exists if ISIN is provided
+	// Convert empty ISIN to NULL for database
+	var isinValue interface{}
+	if transaction.ISIN != "" {
+		isinValue = transaction.ISIN
+		// Create asset if it doesn't exist
+		_, err := db.Exec(`
+			INSERT INTO assets (isin, name, type, currency)
+			VALUES ($1, $2, $3, $4)
+			ON CONFLICT (isin) DO NOTHING
+		`, transaction.ISIN, "Unknown", "stock", "EUR")
+		if err != nil {
+			return fmt.Errorf("failed to create asset for ISIN %s: %w", transaction.ISIN, err)
+		}
+	} else {
+		isinValue = nil
+	}
+
 	tableName := getTransactionTableName(platform)
 
 	// Handle metadata - convert empty string to NULL for JSONB
@@ -74,7 +92,7 @@ func (db *DB) CreateTransaction(transaction *models.Transaction, platform string
 		transaction.SharePrice,
 		transaction.Fees,
 		transaction.Amount,
-		transaction.ISIN,
+		isinValue, // Use isinValue instead of transaction.ISIN
 		transaction.Quantity,
 		transaction.TransactionType,
 		metadata,
@@ -98,6 +116,27 @@ func (db *DB) CreateTransactionsBatch(transactions []models.Transaction, platfor
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer tx.Rollback()
+
+	// First, ensure all ISINs exist in the assets table
+	uniqueISINs := make(map[string]bool)
+	for _, transaction := range transactions {
+		if transaction.ISIN != "" {
+			uniqueISINs[transaction.ISIN] = true
+		}
+	}
+
+	// Create assets for ISINs that don't exist yet
+	for isin := range uniqueISINs {
+		// Try to insert the asset, ignore if it already exists
+		_, err := tx.Exec(`
+			INSERT INTO assets (isin, name, type, currency)
+			VALUES ($1, $2, $3, $4)
+			ON CONFLICT (isin) DO NOTHING
+		`, isin, "Unknown", "stock", "EUR")
+		if err != nil {
+			return fmt.Errorf("failed to create asset for ISIN %s: %w", isin, err)
+		}
+	}
 
 	tableName := getTransactionTableName(platform)
 
@@ -134,6 +173,14 @@ func (db *DB) CreateTransactionsBatch(transactions []models.Transaction, platfor
 			metadata = transaction.Metadata
 		}
 
+		// Handle ISIN - convert empty string to NULL
+		var isinValue interface{}
+		if transaction.ISIN != "" {
+			isinValue = transaction.ISIN
+		} else {
+			isinValue = nil
+		}
+
 		_, err := stmt.Exec(
 			transaction.ID,
 			transaction.AccountID,
@@ -159,7 +206,7 @@ func (db *DB) CreateTransactionsBatch(transactions []models.Transaction, platfor
 			transaction.SharePrice,
 			transaction.Fees,
 			transaction.Amount,
-			transaction.ISIN,
+			isinValue, // Use isinValue instead of transaction.ISIN
 			transaction.Quantity,
 			transaction.TransactionType,
 			metadata,

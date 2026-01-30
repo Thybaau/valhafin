@@ -4,6 +4,8 @@ export {
   useCreateAccount,
   useDeleteAccount,
   useSyncAccount,
+  useInitSync,
+  useCompleteSync,
   accountKeys,
 } from './useAccounts'
 
