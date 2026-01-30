@@ -159,8 +159,8 @@ Ce plan d'implémentation transforme le design en étapes concrètes de dévelop
     - **Propriété 9: Pagination des transactions**
     - **Valide: Exigences 3.2-3.7**
 
-- [ ] 12. API REST - Métriques de frais
-  - [ ] 12.1 Implémenter les endpoints de métriques de frais
+- [x] 12. API REST - Métriques de frais
+  - [x] 12.1 Implémenter les endpoints de métriques de frais
     - GET /api/accounts/:id/fees - Métriques de frais par compte
     - GET /api/fees - Métriques de frais globales
     - Calculer le total des frais, frais moyens, répartition par type
@@ -168,7 +168,7 @@ Ce plan d'implémentation transforme le design en étapes concrètes de dévelop
     - Générer les données pour le graphique d'évolution des frais
     - _Exigences: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6_
   
-  - [ ] 12.2 Écrire les tests de propriété pour les métriques de frais
+  - [x] 12.2 Écrire les tests de propriété pour les métriques de frais
     - **Propriété 17: Agrégation des frais**
     - **Valide: Exigences 5.1-5.6**
 

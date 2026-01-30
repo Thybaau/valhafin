@@ -3,6 +3,7 @@ package api
 import (
 	"valhafin/internal/repository/database"
 	"valhafin/internal/service/encryption"
+	"valhafin/internal/service/fees"
 	"valhafin/internal/service/performance"
 	"valhafin/internal/service/price"
 	"valhafin/internal/service/sync"
@@ -15,6 +16,7 @@ type Services struct {
 	SyncService        *sync.Service
 	PriceService       price.Service
 	PerformanceService performance.Service
+	FeesService        fees.Service
 }
 
 // SetupRoutes configures all API routes and returns the router and services
@@ -33,8 +35,11 @@ func SetupRoutes(db *database.DB, encryptionService *encryption.EncryptionServic
 	// Create performance service
 	performanceService := performance.NewPerformanceService(db, priceService)
 
+	// Create fees service
+	feesService := fees.NewFeesService(db)
+
 	// Create handler with dependencies
-	handler := NewHandler(db, encryptionService, syncService, priceService, performanceService)
+	handler := NewHandler(db, encryptionService, syncService, priceService, performanceService, feesService)
 
 	// Apply middleware
 	router.Use(CORSMiddleware)
@@ -76,6 +81,7 @@ func SetupRoutes(db *database.DB, encryptionService *encryption.EncryptionServic
 		SyncService:        syncService,
 		PriceService:       priceService,
 		PerformanceService: performanceService,
+		FeesService:        feesService,
 	}
 
 	return router, services

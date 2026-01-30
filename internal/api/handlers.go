@@ -11,6 +11,7 @@ import (
 	"valhafin/internal/domain/models"
 	"valhafin/internal/repository/database"
 	encryptionsvc "valhafin/internal/service/encryption"
+	"valhafin/internal/service/fees"
 	"valhafin/internal/service/performance"
 	"valhafin/internal/service/price"
 	"valhafin/internal/service/sync"
@@ -38,10 +39,11 @@ type Handler struct {
 	SyncService        *sync.Service
 	PriceService       price.Service
 	PerformanceService performance.Service
+	FeesService        fees.Service
 }
 
 // NewHandler creates a new Handler with dependencies
-func NewHandler(db *database.DB, encryptionService *encryptionsvc.EncryptionService, syncService *sync.Service, priceService price.Service, performanceService performance.Service) *Handler {
+func NewHandler(db *database.DB, encryptionService *encryptionsvc.EncryptionService, syncService *sync.Service, priceService price.Service, performanceService performance.Service, feesService fees.Service) *Handler {
 	return &Handler{
 		DB:                 db,
 		Encryption:         encryptionService,
@@ -49,6 +51,7 @@ func NewHandler(db *database.DB, encryptionService *encryptionsvc.EncryptionServ
 		SyncService:        syncService,
 		PriceService:       priceService,
 		PerformanceService: performanceService,
+		FeesService:        feesService,
 	}
 }
 
@@ -608,13 +611,91 @@ func (h *Handler) GetAssetPerformanceHandler(w http.ResponseWriter, r *http.Requ
 	respondJSON(w, http.StatusOK, performance)
 }
 
-// Fees handlers (stubs for now)
+// Fees handlers
+
+// GetAccountFeesHandler retrieves fee metrics for a specific account
 func (h *Handler) GetAccountFeesHandler(w http.ResponseWriter, r *http.Request) {
-	respondError(w, http.StatusNotImplemented, "NOT_IMPLEMENTED", "Not implemented yet", nil)
+	vars := mux.Vars(r)
+	accountID := vars["id"]
+
+	if accountID == "" {
+		respondError(w, http.StatusBadRequest, "INVALID_REQUEST", "Account ID is required", nil)
+		return
+	}
+
+	// Check if account exists
+	_, err := h.DB.GetAccountByID(accountID)
+	if err != nil {
+		if err == sql.ErrNoRows || (err != nil && strings.Contains(err.Error(), "no rows")) {
+			respondError(w, http.StatusNotFound, "NOT_FOUND", "Account not found", nil)
+			return
+		}
+		respondError(w, http.StatusInternalServerError, "DATABASE_ERROR", "Failed to retrieve account", nil)
+		return
+	}
+
+	// Parse date filters
+	startDate := r.URL.Query().Get("start_date")
+	endDate := r.URL.Query().Get("end_date")
+
+	// Validate date formats if provided
+	if startDate != "" {
+		if _, err := time.Parse("2006-01-02", startDate); err != nil {
+			respondError(w, http.StatusBadRequest, "INVALID_DATE", "Invalid start_date format (use YYYY-MM-DD)", nil)
+			return
+		}
+	}
+
+	if endDate != "" {
+		if _, err := time.Parse("2006-01-02", endDate); err != nil {
+			respondError(w, http.StatusBadRequest, "INVALID_DATE", "Invalid end_date format (use YYYY-MM-DD)", nil)
+			return
+		}
+	}
+
+	// Calculate fees
+	feesMetrics, err := h.FeesService.CalculateAccountFees(accountID, startDate, endDate)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "FEES_ERROR", "Failed to calculate fees", map[string]string{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	respondJSON(w, http.StatusOK, feesMetrics)
 }
 
+// GetGlobalFeesHandler retrieves fee metrics across all accounts
 func (h *Handler) GetGlobalFeesHandler(w http.ResponseWriter, r *http.Request) {
-	respondError(w, http.StatusNotImplemented, "NOT_IMPLEMENTED", "Not implemented yet", nil)
+	// Parse date filters
+	startDate := r.URL.Query().Get("start_date")
+	endDate := r.URL.Query().Get("end_date")
+
+	// Validate date formats if provided
+	if startDate != "" {
+		if _, err := time.Parse("2006-01-02", startDate); err != nil {
+			respondError(w, http.StatusBadRequest, "INVALID_DATE", "Invalid start_date format (use YYYY-MM-DD)", nil)
+			return
+		}
+	}
+
+	if endDate != "" {
+		if _, err := time.Parse("2006-01-02", endDate); err != nil {
+			respondError(w, http.StatusBadRequest, "INVALID_DATE", "Invalid end_date format (use YYYY-MM-DD)", nil)
+			return
+		}
+	}
+
+	// Calculate global fees
+	feesMetrics, err := h.FeesService.CalculateGlobalFees(startDate, endDate)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "FEES_ERROR", "Failed to calculate global fees", map[string]string{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	respondJSON(w, http.StatusOK, feesMetrics)
 }
 
 // Asset handlers
