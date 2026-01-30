@@ -10,27 +10,27 @@ type Transaction struct {
 	Timestamp         string  `json:"timestamp" csv:"timestamp" db:"timestamp"`
 	Title             string  `json:"title" csv:"title" db:"title"`
 	Icon              string  `json:"icon" csv:"icon" db:"icon"`
-	Avatar            string  `json:"avatar.asset" csv:"avatar.asset" db:"avatar"`
+	Avatar            string  `json:"avatar" csv:"avatar.asset" db:"avatar"`
 	Subtitle          string  `json:"subtitle" csv:"subtitle" db:"subtitle"`
-	AmountCurrency    string  `json:"amount.currency" csv:"amount.currency" db:"amount_currency"`
-	AmountValue       float64 `json:"amount.value" csv:"amount.value" db:"amount_value"`
-	AmountFraction    int     `json:"amount.fractionDigits" csv:"amount.fractionDigits" db:"amount_fraction"`
+	AmountCurrency    string  `json:"amount_currency" csv:"amount.currency" db:"amount_currency"`
+	AmountValue       float64 `json:"amount_value" csv:"amount.value" db:"amount_value"`
+	AmountFraction    int     `json:"amount_fraction" csv:"amount.fractionDigits" db:"amount_fraction"`
 	Status            string  `json:"status" csv:"status" db:"status"`
-	ActionType        string  `json:"action.type" csv:"action.type" db:"action_type"`
-	ActionPayload     string  `json:"action.payload" csv:"action.payload" db:"action_payload"`
-	CashAccountNumber string  `json:"cashAccountNumber" csv:"cashAccountNumber" db:"cash_account_number"`
+	ActionType        string  `json:"action_type" csv:"action.type" db:"action_type"`
+	ActionPayload     string  `json:"action_payload" csv:"action.payload" db:"action_payload"`
+	CashAccountNumber string  `json:"cash_account_number" csv:"cashAccountNumber" db:"cash_account_number"`
 	Hidden            bool    `json:"hidden" csv:"hidden" db:"hidden"`
 	Deleted           bool    `json:"deleted" csv:"deleted" db:"deleted"`
 
 	// Details (when extract_details is true)
-	Actions          string `json:"Actions,omitempty" csv:"Actions" db:"actions"`
-	DividendPerShare string `json:"Dividende par action,omitempty" csv:"Dividende par action" db:"dividend_per_share"`
-	Taxes            string `json:"Taxes,omitempty" csv:"Taxes" db:"taxes"`
-	Total            string `json:"Total,omitempty" csv:"Total" db:"total"`
-	Shares           string `json:"Titres,omitempty" csv:"Titres" db:"shares"`
-	SharePrice       string `json:"Cours du titre,omitempty" csv:"Cours du titre" db:"share_price"`
-	Fees             string `json:"Frais,omitempty" csv:"Frais" db:"fees"`
-	Amount           string `json:"Montant,omitempty" csv:"Montant" db:"amount"`
+	Actions          string `json:"actions,omitempty" csv:"Actions" db:"actions"`
+	DividendPerShare string `json:"dividend_per_share,omitempty" csv:"Dividende par action" db:"dividend_per_share"`
+	Taxes            string `json:"taxes,omitempty" csv:"Taxes" db:"taxes"`
+	Total            string `json:"total,omitempty" csv:"Total" db:"total"`
+	Shares           string `json:"shares,omitempty" csv:"Titres" db:"shares"`
+	SharePrice       string `json:"share_price,omitempty" csv:"Cours du titre" db:"share_price"`
+	Fees             string `json:"fees,omitempty" csv:"Frais" db:"fees"`
+	Amount           string `json:"amount,omitempty" csv:"Montant" db:"amount"`
 
 	// New fields for database integration
 	AccountID       string  `json:"account_id" db:"account_id"`

@@ -19,7 +19,7 @@ export interface Transaction {
   quantity?: number
   amount_value: number
   amount_currency: string
-  fees: number
+  fees: string | number // Can be string from API
   transaction_type: string
   status: string
 }

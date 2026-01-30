@@ -110,7 +110,7 @@ func (s *Scraper) FetchTransactionsWithToken(sessionToken string, lastSync *time
 	log.Printf("DEBUG: Received %d timeline transactions", len(timelineTransactions))
 
 	// Convert timeline transactions to our Transaction model
-	transactions := s.convertTimelineTransactions(timelineTransactions)
+	transactions := s.convertTimelineTransactions(timelineTransactions, wsClient)
 
 	// Filter by lastSync if provided (incremental sync)
 	if lastSync != nil {
@@ -129,7 +129,7 @@ func (s *Scraper) FetchTransactionsWithToken(sessionToken string, lastSync *time
 }
 
 // convertTimelineTransactions converts WebSocket timeline transactions to our Transaction model
-func (s *Scraper) convertTimelineTransactions(timelineTransactions []TimelineTransaction) []models.Transaction {
+func (s *Scraper) convertTimelineTransactions(timelineTransactions []TimelineTransaction, wsClient *WebSocketClient) []models.Transaction {
 	transactions := make([]models.Transaction, 0, len(timelineTransactions))
 
 	for _, tt := range timelineTransactions {
@@ -208,13 +208,18 @@ func (s *Scraper) convertTimelineTransactions(timelineTransactions []TimelineTra
 		}
 
 		// Determine transaction type
-		transactionType := s.determineTransactionTypeFromIcon(tt.Icon, tt.Title)
+		transactionType := s.determineTransactionTypeFromIcon(tt.Icon, tt.Title, tt.Subtitle, amountValue)
 
 		// Convert ISIN to pointer (nil if empty)
 		var isinPtr *string
 		if isin != "" {
 			isinPtr = &isin
 		}
+
+		// TODO: Fetch fees for buy/sell transactions
+		// For now, keep fees at 0 as fetching details for each transaction is too slow
+		// We could implement this as a background job later
+		fees := "0"
 
 		tx := models.Transaction{
 			ID:              tt.ID,
@@ -224,7 +229,7 @@ func (s *Scraper) convertTimelineTransactions(timelineTransactions []TimelineTra
 			ISIN:            isinPtr,
 			AmountValue:     amountValue,
 			AmountCurrency:  amountCurrency,
-			Fees:            "0",
+			Fees:            fees,
 			Quantity:        0,
 			TransactionType: transactionType,
 			Status:          "completed",
@@ -239,26 +244,92 @@ func (s *Scraper) convertTimelineTransactions(timelineTransactions []TimelineTra
 }
 
 // determineTransactionTypeFromIcon determines the transaction type from icon and title
-func (s *Scraper) determineTransactionTypeFromIcon(icon, title string) string {
+// determineTransactionTypeFromIcon determines the transaction type from icon, title, subtitle and amount
+func (s *Scraper) determineTransactionTypeFromIcon(icon, title, subtitle string, amountValue float64) string {
 	iconLower := strings.ToLower(icon)
 	titleLower := strings.ToLower(title)
+	subtitleLower := strings.ToLower(subtitle)
 
-	if strings.Contains(iconLower, "dividend") || strings.Contains(titleLower, "dividende") {
+	// Dividends - check subtitle for "dividende" or "dividend"
+	if strings.Contains(subtitleLower, "dividende en espèces") ||
+		strings.Contains(subtitleLower, "dividende") ||
+		strings.Contains(subtitleLower, "dividend") ||
+		strings.Contains(iconLower, "dividend") {
 		return "dividend"
 	}
-	if strings.Contains(iconLower, "arrow-right") || strings.Contains(titleLower, "kauf") || strings.Contains(titleLower, "sparplan") {
+
+	// Interest
+	if strings.Contains(titleLower, "intérêts") ||
+		strings.Contains(titleLower, "intérêt") ||
+		strings.Contains(titleLower, "interest") {
+		return "interest"
+	}
+
+	// Buy transactions - negative amount means money going out (buying)
+	// Check subtitle for execution confirmation or if amount is negative with an ISIN
+	if strings.Contains(subtitleLower, "plan d'épargne exécuté") ||
+		strings.Contains(subtitleLower, "sparplan ausgeführt") ||
+		strings.Contains(subtitleLower, "ordre d'achat") ||
+		strings.Contains(subtitleLower, "échec du plan d'épargne") ||
+		strings.Contains(subtitleLower, "buy order") ||
+		strings.Contains(iconLower, "arrow-right") ||
+		strings.Contains(titleLower, "kauf") ||
+		strings.Contains(titleLower, "sparplan") {
 		return "buy"
 	}
-	if strings.Contains(iconLower, "arrow-left") || strings.Contains(titleLower, "verkauf") {
+
+	// If amount is negative and title contains an asset name (not "intérêt", "versement", etc.)
+	// it's likely a buy transaction
+	if amountValue < 0 &&
+		!strings.Contains(titleLower, "intérêt") &&
+		!strings.Contains(titleLower, "versement") &&
+		!strings.Contains(titleLower, "dépôt") &&
+		titleLower != "" &&
+		// Check if it looks like an asset name (contains letters and possibly numbers)
+		len(titleLower) > 3 {
+		return "buy"
+	}
+
+	// Sell transactions
+	if strings.Contains(subtitleLower, "ordre de vente") ||
+		strings.Contains(subtitleLower, "sell order") ||
+		strings.Contains(iconLower, "arrow-left") ||
+		strings.Contains(titleLower, "verkauf") ||
+		strings.Contains(titleLower, "vente") {
 		return "sell"
 	}
-	if strings.Contains(titleLower, "einzahlung") {
+
+	// Deposits - positive amount with specific keywords or "terminé" subtitle
+	if strings.Contains(subtitleLower, "terminé") ||
+		strings.Contains(titleLower, "einzahlung") ||
+		strings.Contains(titleLower, "dépôt") ||
+		strings.Contains(titleLower, "versement") ||
+		strings.Contains(titleLower, "deposit") {
+		// But not if it's a dividend
+		if !strings.Contains(subtitleLower, "dividende") {
+			return "deposit"
+		}
+	}
+
+	// If amount is positive and title is a person's name (contains spaces and capital letters)
+	// it's likely a deposit
+	if amountValue > 0 &&
+		strings.Contains(title, " ") &&
+		title == strings.Title(strings.ToLower(title)) {
 		return "deposit"
 	}
-	if strings.Contains(titleLower, "auszahlung") {
+
+	// Withdrawals
+	if strings.Contains(titleLower, "auszahlung") ||
+		strings.Contains(titleLower, "retrait") ||
+		strings.Contains(titleLower, "withdrawal") {
 		return "withdrawal"
 	}
-	if strings.Contains(titleLower, "gebühr") {
+
+	// Fees
+	if strings.Contains(titleLower, "gebühr") ||
+		strings.Contains(titleLower, "frais") ||
+		strings.Contains(titleLower, "fee") {
 		return "fee"
 	}
 
@@ -368,30 +439,10 @@ func (s *Scraper) parseTimelineEvents(events []TimelineEvent) []models.Transacti
 }
 
 // determineTransactionTypeFromEvent determines the transaction type from a timeline event
+// determineTransactionTypeFromEvent determines the transaction type from a timeline event
 func (s *Scraper) determineTransactionTypeFromEvent(event TimelineEvent) string {
-	body := strings.ToLower(event.Data.Body)
-	icon := strings.ToLower(event.Data.Icon)
-
-	if strings.Contains(icon, "dividend") || strings.Contains(body, "dividende") {
-		return "dividend"
-	}
-	if strings.Contains(icon, "arrow-right") || strings.Contains(body, "kauf") || strings.Contains(body, "sparplan") {
-		return "buy"
-	}
-	if strings.Contains(icon, "arrow-left") || strings.Contains(body, "verkauf") {
-		return "sell"
-	}
-	if strings.Contains(body, "einzahlung") {
-		return "deposit"
-	}
-	if strings.Contains(body, "auszahlung") {
-		return "withdrawal"
-	}
-	if strings.Contains(body, "gebühr") {
-		return "fee"
-	}
-
-	return "other"
+	// Reuse the main function with title, body and cash change amount
+	return s.determineTransactionTypeFromIcon(event.Data.Icon, event.Data.Title, event.Data.Body, event.Data.CashChangeAmount)
 }
 
 // downloadCSVExport downloads the CSV export from Trade Republic (DEPRECATED - kept for reference)

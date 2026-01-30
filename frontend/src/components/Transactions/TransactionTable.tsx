@@ -53,6 +53,7 @@ export default function TransactionTable({
       fee: 'Frais',
       deposit: 'Dépôt',
       withdrawal: 'Retrait',
+      interest: 'Intérêts',
       other: 'Autre',
     }
     return labels[type] || type
@@ -66,6 +67,7 @@ export default function TransactionTable({
       fee: 'text-warning',
       deposit: 'text-success',
       withdrawal: 'text-error',
+      interest: 'text-success',
       other: 'text-text-muted',
     }
     return colors[type] || 'text-text-secondary'
