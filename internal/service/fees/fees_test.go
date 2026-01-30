@@ -134,6 +134,8 @@ func TestProperty_FeesAggregation(t *testing.T) {
 
 			for i := 0; i < numTransactions; i++ {
 				feeValue := feeValues[i%len(feeValues)]
+				// Round to 2 decimals to match the formatting in the transaction
+				feeValue = float64(int(feeValue*100+0.5)) / 100
 				txType := transactionTypes[i%len(transactionTypes)]
 
 				tx := models.Transaction{
@@ -298,6 +300,8 @@ func TestProperty_GlobalFeesAggregation(t *testing.T) {
 
 				// Create transactions for this account
 				feeValue := feesPerAccount[i%len(feesPerAccount)]
+				// Round to 2 decimals to match the formatting in the transaction
+				feeValue = float64(int(feeValue*100+0.5)) / 100
 				numTx := 3 // Fixed number of transactions per account
 
 				for j := 0; j < numTx; j++ {
@@ -407,7 +411,8 @@ func TestProperty_FeesFilteringByPeriod(t *testing.T) {
 			}
 
 			// Create transactions spanning different dates
-			now := time.Now()
+			// Normalize to midnight to avoid time component issues
+			now := time.Now().Truncate(24 * time.Hour)
 			feeValue := 1.0
 
 			// Create transactions at specific day offsets

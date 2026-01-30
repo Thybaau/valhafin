@@ -50,11 +50,24 @@ func (s *feesService) CalculateAccountFees(accountID string, startDate, endDate 
 		return nil, fmt.Errorf("failed to get account: %w", err)
 	}
 
+	// Normalize dates for proper timestamp comparison
+	normalizedStartDate := startDate
+	normalizedEndDate := endDate
+
+	// If endDate is provided, add time component to include the entire day
+	if endDate != "" {
+		// Parse the date and add 23:59:59 to include the entire day
+		if t, err := time.Parse("2006-01-02", endDate); err == nil {
+			// Add 1 day and subtract 1 second to get 23:59:59 of the end date
+			normalizedEndDate = t.AddDate(0, 0, 1).Add(-time.Second).Format(time.RFC3339)
+		}
+	}
+
 	// Build filter
 	filter := database.TransactionFilter{
 		AccountID: accountID,
-		StartDate: startDate,
-		EndDate:   endDate,
+		StartDate: normalizedStartDate,
+		EndDate:   normalizedEndDate,
 	}
 
 	// Get all transactions for the account
@@ -74,14 +87,27 @@ func (s *feesService) CalculateGlobalFees(startDate, endDate string) (*FeesMetri
 		return nil, fmt.Errorf("failed to get accounts: %w", err)
 	}
 
+	// Normalize dates for proper timestamp comparison
+	normalizedStartDate := startDate
+	normalizedEndDate := endDate
+
+	// If endDate is provided, add time component to include the entire day
+	if endDate != "" {
+		// Parse the date and add 23:59:59 to include the entire day
+		if t, err := time.Parse("2006-01-02", endDate); err == nil {
+			// Add 1 day and subtract 1 second to get 23:59:59 of the end date
+			normalizedEndDate = t.AddDate(0, 0, 1).Add(-time.Second).Format(time.RFC3339)
+		}
+	}
+
 	// Collect all transactions from all accounts
 	allTransactions := []models.Transaction{}
 
 	for _, account := range accounts {
 		filter := database.TransactionFilter{
 			AccountID: account.ID,
-			StartDate: startDate,
-			EndDate:   endDate,
+			StartDate: normalizedStartDate,
+			EndDate:   normalizedEndDate,
 		}
 
 		transactions, err := s.db.GetTransactionsByAccount(account.ID, account.Platform, filter)

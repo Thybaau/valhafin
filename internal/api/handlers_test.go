@@ -12,6 +12,7 @@ import (
 	"valhafin/internal/domain/models"
 	"valhafin/internal/repository/database"
 	encryptionsvc "valhafin/internal/service/encryption"
+	"valhafin/internal/service/fees"
 	"valhafin/internal/service/performance"
 	"valhafin/internal/service/price"
 	"valhafin/internal/service/sync"
@@ -91,7 +92,10 @@ func setupTestHandler(t *testing.T) (*Handler, *database.DB) {
 	// Create performance service
 	performanceService := performance.NewPerformanceService(db, priceService)
 
-	handler := NewHandler(db, encryptionService, syncService, priceService, performanceService)
+	// Create fees service
+	feesService := fees.NewFeesService(db)
+
+	handler := NewHandler(db, encryptionService, syncService, priceService, performanceService, feesService)
 	return handler, db
 }
 
