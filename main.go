@@ -16,6 +16,8 @@ import (
 	"valhafin/internal/repository/database"
 	encryptionsvc "valhafin/internal/service/encryption"
 	"valhafin/internal/service/scheduler"
+
+	"github.com/joho/godotenv"
 )
 
 var (
@@ -25,6 +27,10 @@ var (
 )
 
 func main() {
+	// Load .env file if it exists (ignore error if not found)
+	// In production, environment variables will be set directly
+	_ = godotenv.Load()
+
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {

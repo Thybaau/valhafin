@@ -1,4 +1,4 @@
-.PHONY: build run clean test install dev-db dev-backend dev-frontend dev setup
+.PHONY: build run clean test install dev-db dev-backend dev-frontend dev setup test-api
 
 # Build the application
 build:
@@ -25,6 +25,11 @@ test:
 	go test ./...
 	cd frontend && npm test
 
+# Test all API endpoints
+test-api:
+	@echo "🧪 Testing all API endpoints..."
+	@./test_all_endpoints.sh
+
 # Development commands
 dev-db:
 	docker-compose -f docker-compose.dev.yml up -d
@@ -33,7 +38,9 @@ dev-db-stop:
 	docker-compose -f docker-compose.dev.yml down
 
 dev-backend:
-	go run main.go
+	@echo "🚀 Starting backend..."
+	@echo "📝 Loading environment from .env file"
+	@go run main.go
 
 dev-frontend:
 	cd frontend && npm run dev

@@ -33,34 +33,48 @@ Valhafin est composé de deux parties principales :
 - Go 1.21+
 - Node.js 20+
 - PostgreSQL 15+ (ou Docker)
+- Make (optionnel, mais recommandé)
 
-### 1. Configuration de la base de données
-
-Démarrer PostgreSQL avec Docker Compose :
+### Installation Rapide
 
 ```bash
-docker-compose -f docker-compose.dev.yml up -d
+# 1. Cloner le repo
+git clone https://github.com/your-org/valhafin.git
+cd valhafin
+
+# 2. Installer les dépendances
+make setup
+
+# 3. Copier et configurer .env
+cp .env.example .env
+# Éditer .env avec vos valeurs (voir ci-dessous)
+
+# 4. Démarrer PostgreSQL
+make dev-db
+
+# 5. Démarrer le backend
+make dev-backend
+
+# 6. Dans un autre terminal, démarrer le frontend
+make dev-frontend
 ```
 
-### 2. Configuration du backend
+### Configuration (.env)
 
-Créer un fichier `.env` à partir de `.env.example` :
+Le backend charge automatiquement le fichier `.env` au démarrage. Créez-le à partir de `.env.example`:
 
 ```bash
 cp .env.example .env
 ```
 
-Générer une clé de chiffrement sécurisée (32 bytes en hexadécimal) :
+Générer une clé de chiffrement sécurisée (32 bytes en hexadécimal):
 
 ```bash
 # Avec OpenSSL
 openssl rand -hex 32
-
-# Ou avec Go
-go run -c 'package main; import ("crypto/rand"; "encoding/hex"; "fmt"); func main() { key := make([]byte, 32); rand.Read(key); fmt.Println(hex.EncodeToString(key)) }'
 ```
 
-Éditer `.env` avec vos configurations :
+Éditer `.env` avec vos configurations:
 
 ```env
 DATABASE_URL=postgresql://valhafin:valhafin_dev_password@localhost:5432/valhafin_dev?sslmode=disable
@@ -68,43 +82,44 @@ PORT=8080
 ENCRYPTION_KEY=your_generated_32_byte_hex_key_here
 ```
 
-Installer les dépendances Go :
+**Important:** Le fichier `.env` est ignoré par git et ne doit JAMAIS être commité.
+
+### Démarrage Manuel (sans Make)
+
+#### 1. Base de données
 
 ```bash
-go mod download
+docker-compose -f docker-compose.dev.yml up -d
 ```
 
-Démarrer le serveur API :
+#### 2. Backend
 
 ```bash
+# Le .env est chargé automatiquement
 go run main.go
 ```
 
 Le serveur API sera accessible sur http://localhost:8080
 
-**Endpoints disponibles :**
-- `GET /health` - Health check
-- `POST /api/accounts` - Créer un compte
-- `GET /api/accounts` - Lister les comptes
-- `GET /api/accounts/:id` - Détails d'un compte
-- `DELETE /api/accounts/:id` - Supprimer un compte
-
-### 3. Configuration du frontend
-
-Installer les dépendances :
+#### 3. Frontend
 
 ```bash
 cd frontend
 npm install
-```
-
-Démarrer le serveur de développement :
-
-```bash
 npm run dev
 ```
 
 Le frontend sera accessible sur http://localhost:5173
+
+### Vérifier que tout fonctionne
+
+```bash
+# Health check
+curl http://localhost:8080/health
+
+# Tester tous les endpoints
+make test-api
+```
 
 ## Structure du Projet
 
@@ -139,6 +154,31 @@ valhafin/
 
 ## Développement
 
+### Commandes Make
+
+```bash
+# Démarrer PostgreSQL
+make dev-db
+
+# Démarrer le backend (charge automatiquement .env)
+make dev-backend
+
+# Démarrer le frontend
+make dev-frontend
+
+# Tester l'API
+make test-api
+
+# Lancer les tests Go
+make test
+
+# Arrêter PostgreSQL
+make dev-db-stop
+
+# Nettoyer les artifacts de build
+make clean
+```
+
 ### Backend
 
 ```bash
@@ -147,6 +187,9 @@ go test ./...
 
 # Build
 go build -o valhafin
+
+# Lancer avec logs
+go run main.go
 ```
 
 ### Frontend
@@ -164,6 +207,38 @@ npm run lint
 npm run build
 ```
 
+## API Endpoints
+
+Le backend expose une API RESTful complète:
+
+**Comptes:**
+- `POST /api/accounts` - Créer un compte
+- `GET /api/accounts` - Lister les comptes
+- `GET /api/accounts/:id` - Détails d'un compte
+- `DELETE /api/accounts/:id` - Supprimer un compte
+- `POST /api/accounts/:id/sync` - Synchroniser un compte
+
+**Transactions:**
+- `GET /api/accounts/:id/transactions` - Transactions d'un compte
+- `GET /api/transactions` - Toutes les transactions
+- `POST /api/transactions/import` - Importer depuis CSV
+
+**Performance:**
+- `GET /api/accounts/:id/performance` - Performance d'un compte
+- `GET /api/performance` - Performance globale
+- `GET /api/assets/:isin/performance` - Performance d'un actif
+
+**Frais:**
+- `GET /api/accounts/:id/fees` - Frais d'un compte
+- `GET /api/fees` - Frais globaux
+
+**Prix:**
+- `GET /api/assets/:isin/price` - Prix actuel d'un actif
+- `GET /api/assets/:isin/history` - Historique des prix
+
+**Health:**
+- `GET /health` - État de l'application
+
 ## Plateformes Supportées
 
 - ✅ Trade Republic (scraper fonctionnel)
@@ -172,10 +247,22 @@ npm run build
 
 ## Documentation
 
-Pour plus de détails sur l'architecture et le design, consultez :
+### Guides de Démarrage
+- **[Guide Simplifié](docs/SIMPLE_STARTUP_GUIDE.md)** - Démarrage rapide en 3 commandes
+- **[Guide Complet](docs/BACKEND_STARTUP_GUIDE.md)** - Guide détaillé du backend
+- **[FAQ](docs/FAQ_BACKEND_STARTUP.md)** - Questions fréquentes
 
-- [Spécifications](.kiro/specs/portfolio-web-app/)
-- [Documentation Frontend](frontend/README.md)
+### Déploiement
+- **[Production](docs/PRODUCTION_DEPLOYMENT.md)** - Guide de déploiement en production
+- **[Docker & CI/CD](docs/PRODUCTION_DEPLOYMENT.md#méthodes-de-déploiement)** - Déploiement avec Docker, Kubernetes, etc.
+
+### Architecture
+- **[Spécifications](.kiro/specs/portfolio-web-app/)** - Exigences et design complet
+- **[Documentation Frontend](frontend/README.md)** - Guide du frontend React
+- **[Index Documentation](docs/README.md)** - Toute la documentation
+
+### Résumés des Tâches
+- Consultez le dossier [docs/](docs/) pour les résumés détaillés de chaque tâche implémentée
 
 ## License
 
