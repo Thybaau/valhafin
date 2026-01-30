@@ -9,6 +9,7 @@ import (
 	"valhafin/internal/domain/models"
 	"valhafin/internal/repository/database"
 	encryptionsvc "valhafin/internal/service/encryption"
+	"valhafin/internal/service/performance"
 	"valhafin/internal/service/price"
 	"valhafin/internal/service/sync"
 
@@ -29,21 +30,23 @@ type ErrorDetail struct {
 
 // Handler holds dependencies for API handlers
 type Handler struct {
-	DB           *database.DB
-	Encryption   *encryptionsvc.EncryptionService
-	Validator    *CredentialsValidator
-	SyncService  *sync.Service
-	PriceService price.Service
+	DB                 *database.DB
+	Encryption         *encryptionsvc.EncryptionService
+	Validator          *CredentialsValidator
+	SyncService        *sync.Service
+	PriceService       price.Service
+	PerformanceService performance.Service
 }
 
 // NewHandler creates a new Handler with dependencies
-func NewHandler(db *database.DB, encryptionService *encryptionsvc.EncryptionService, syncService *sync.Service, priceService price.Service) *Handler {
+func NewHandler(db *database.DB, encryptionService *encryptionsvc.EncryptionService, syncService *sync.Service, priceService price.Service, performanceService performance.Service) *Handler {
 	return &Handler{
-		DB:           db,
-		Encryption:   encryptionService,
-		Validator:    NewCredentialsValidator(),
-		SyncService:  syncService,
-		PriceService: priceService,
+		DB:                 db,
+		Encryption:         encryptionService,
+		Validator:          NewCredentialsValidator(),
+		SyncService:        syncService,
+		PriceService:       priceService,
+		PerformanceService: performanceService,
 	}
 }
 
@@ -274,17 +277,118 @@ func (h *Handler) ImportCSVHandler(w http.ResponseWriter, r *http.Request) {
 	respondError(w, http.StatusNotImplemented, "NOT_IMPLEMENTED", "Not implemented yet", nil)
 }
 
-// Performance handlers (stubs for now)
+// Performance handlers
+
+// GetAccountPerformanceHandler retrieves performance metrics for a specific account
 func (h *Handler) GetAccountPerformanceHandler(w http.ResponseWriter, r *http.Request) {
-	respondError(w, http.StatusNotImplemented, "NOT_IMPLEMENTED", "Not implemented yet", nil)
+	vars := mux.Vars(r)
+	accountID := vars["id"]
+
+	if accountID == "" {
+		respondError(w, http.StatusBadRequest, "INVALID_REQUEST", "Account ID is required", nil)
+		return
+	}
+
+	// Check if account exists
+	_, err := h.DB.GetAccountByID(accountID)
+	if err != nil {
+		if err == sql.ErrNoRows || (err != nil && strings.Contains(err.Error(), "no rows")) {
+			respondError(w, http.StatusNotFound, "NOT_FOUND", "Account not found", nil)
+			return
+		}
+		respondError(w, http.StatusInternalServerError, "DATABASE_ERROR", "Failed to retrieve account", nil)
+		return
+	}
+
+	// Get period from query parameter (default: 1y)
+	period := r.URL.Query().Get("period")
+	if period == "" {
+		period = "1y"
+	}
+
+	// Validate period
+	validPeriods := map[string]bool{"1m": true, "3m": true, "1y": true, "all": true}
+	if !validPeriods[period] {
+		respondError(w, http.StatusBadRequest, "INVALID_PERIOD", "Period must be one of: 1m, 3m, 1y, all", nil)
+		return
+	}
+
+	// Calculate performance
+	performance, err := h.PerformanceService.CalculateAccountPerformance(accountID, period)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "PERFORMANCE_ERROR", "Failed to calculate performance", map[string]string{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	respondJSON(w, http.StatusOK, performance)
 }
 
+// GetGlobalPerformanceHandler retrieves performance metrics across all accounts
 func (h *Handler) GetGlobalPerformanceHandler(w http.ResponseWriter, r *http.Request) {
-	respondError(w, http.StatusNotImplemented, "NOT_IMPLEMENTED", "Not implemented yet", nil)
+	// Get period from query parameter (default: 1y)
+	period := r.URL.Query().Get("period")
+	if period == "" {
+		period = "1y"
+	}
+
+	// Validate period
+	validPeriods := map[string]bool{"1m": true, "3m": true, "1y": true, "all": true}
+	if !validPeriods[period] {
+		respondError(w, http.StatusBadRequest, "INVALID_PERIOD", "Period must be one of: 1m, 3m, 1y, all", nil)
+		return
+	}
+
+	// Calculate global performance
+	performance, err := h.PerformanceService.CalculateGlobalPerformance(period)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "PERFORMANCE_ERROR", "Failed to calculate global performance", map[string]string{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	respondJSON(w, http.StatusOK, performance)
 }
 
+// GetAssetPerformanceHandler retrieves performance metrics for a specific asset
 func (h *Handler) GetAssetPerformanceHandler(w http.ResponseWriter, r *http.Request) {
-	respondError(w, http.StatusNotImplemented, "NOT_IMPLEMENTED", "Not implemented yet", nil)
+	vars := mux.Vars(r)
+	isin := vars["isin"]
+
+	if isin == "" {
+		respondError(w, http.StatusBadRequest, "INVALID_REQUEST", "ISIN is required", nil)
+		return
+	}
+
+	// Get period from query parameter (default: 1y)
+	period := r.URL.Query().Get("period")
+	if period == "" {
+		period = "1y"
+	}
+
+	// Validate period
+	validPeriods := map[string]bool{"1m": true, "3m": true, "1y": true, "all": true}
+	if !validPeriods[period] {
+		respondError(w, http.StatusBadRequest, "INVALID_PERIOD", "Period must be one of: 1m, 3m, 1y, all", nil)
+		return
+	}
+
+	// Calculate asset performance
+	performance, err := h.PerformanceService.CalculateAssetPerformance(isin, period)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			respondError(w, http.StatusNotFound, "NOT_FOUND", "Asset not found", nil)
+			return
+		}
+		respondError(w, http.StatusInternalServerError, "PERFORMANCE_ERROR", "Failed to calculate asset performance", map[string]string{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	respondJSON(w, http.StatusOK, performance)
 }
 
 // Fees handlers (stubs for now)

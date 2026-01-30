@@ -122,8 +122,8 @@ Ce plan d'implémentation transforme le design en étapes concrètes de dévelop
   - Vérifier que le scheduler fonctionne
   - Demander à l'utilisateur si des questions se posent
 
-- [ ] 10. Service de calcul de performance
-  - [ ] 10.1 Implémenter le PerformanceService
+- [x] 10. Service de calcul de performance
+  - [x] 10.1 Implémenter le PerformanceService
     - Créer l'interface PerformanceService
     - Implémenter le calcul de performance par compte
     - Implémenter le calcul de performance globale
@@ -131,14 +131,14 @@ Ce plan d'implémentation transforme le design en étapes concrètes de dévelop
     - Inclure les frais dans tous les calculs
     - _Exigences: 4.4, 4.6, 5.7, 10.7_
   
-  - [ ] 10.2 Implémenter les endpoints de performance
+  - [x] 10.2 Implémenter les endpoints de performance
     - GET /api/accounts/:id/performance - Performance d'un compte
     - GET /api/performance - Performance globale
     - GET /api/assets/:isin/performance - Performance d'un actif
     - Supporter le filtrage par période (1m, 3m, 1y, all)
     - _Exigences: 4.1, 4.2, 4.3, 4.8_
   
-  - [ ] 10.3 Écrire les tests de propriété pour le calcul de performance
+  - [x] 10.3 Écrire les tests de propriété pour le calcul de performance
     - **Propriété 10: Calcul de performance avec prix actuels**
     - **Propriété 11: Agrégation de performance globale**
     - **Propriété 16: Calcul de valeur actuelle**
