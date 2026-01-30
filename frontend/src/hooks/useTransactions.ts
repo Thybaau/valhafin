@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { transactionsApi } from '../services'
 import type { TransactionFilters } from '../services'
+import type { Transaction } from '../types'
 
 // Query keys
 export const transactionKeys = {
@@ -26,6 +27,22 @@ export function useAccountTransactions(accountId: string, filters?: TransactionF
     queryFn: () => transactionsApi.getByAccount(accountId, filters),
     enabled: !!accountId,
     staleTime: 2 * 60 * 1000,
+  })
+}
+
+// Hook pour mettre à jour une transaction
+export function useUpdateTransaction() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, transaction }: { id: string; transaction: Partial<Transaction> }) =>
+      transactionsApi.update(id, transaction),
+    onSuccess: () => {
+      // Invalider toutes les transactions et performances
+      queryClient.invalidateQueries({ queryKey: transactionKeys.all })
+      queryClient.invalidateQueries({ queryKey: ['performance'] })
+      queryClient.invalidateQueries({ queryKey: ['fees'] })
+    },
   })
 }
 

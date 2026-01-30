@@ -49,6 +49,12 @@ export const transactionsApi = {
     return response.data
   },
 
+  // Mettre à jour une transaction
+  update: async (transactionId: string, transaction: Partial<Transaction>): Promise<Transaction> => {
+    const response = await apiClient.put(`/transactions/${transactionId}`, transaction)
+    return response.data
+  },
+
   // Importer des transactions depuis un CSV
   importCSV: async (accountId: string, file: File): Promise<ImportCSVResponse> => {
     const formData = new FormData()

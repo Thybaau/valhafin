@@ -81,6 +81,7 @@ func SetupRoutesWithVersion(db *database.DB, encryptionService *encryption.Encry
 	// Transaction routes
 	api.HandleFunc("/accounts/{id}/transactions", handler.GetAccountTransactionsHandler).Methods("GET")
 	api.HandleFunc("/transactions", handler.GetAllTransactionsHandler).Methods("GET")
+	api.HandleFunc("/transactions/{id}", handler.UpdateTransactionHandler).Methods("PUT")
 	api.HandleFunc("/transactions/import", handler.ImportCSVHandler).Methods("POST")
 
 	// Performance routes

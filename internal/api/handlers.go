@@ -748,6 +748,48 @@ type ImportSummary struct {
 	Details  []string `json:"details,omitempty"`
 }
 
+// UpdateTransactionHandler updates an existing transaction
+func (h *Handler) UpdateTransactionHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	transactionID := vars["id"]
+
+	if transactionID == "" {
+		respondError(w, http.StatusBadRequest, "INVALID_REQUEST", "Transaction ID is required", nil)
+		return
+	}
+
+	// Parse request body
+	var transaction models.Transaction
+	if err := json.NewDecoder(r.Body).Decode(&transaction); err != nil {
+		respondError(w, http.StatusBadRequest, "INVALID_REQUEST", "Invalid request body", nil)
+		return
+	}
+
+	// Set the ID from URL
+	transaction.ID = transactionID
+
+	// Get account to determine platform
+	account, err := h.DB.GetAccountByID(transaction.AccountID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "NOT_FOUND", "Account not found", nil)
+		return
+	}
+
+	// Update transaction
+	if err := h.DB.UpdateTransaction(&transaction, account.Platform); err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			respondError(w, http.StatusNotFound, "NOT_FOUND", "Transaction not found", nil)
+			return
+		}
+		respondError(w, http.StatusInternalServerError, "DATABASE_ERROR", "Failed to update transaction", map[string]string{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	respondJSON(w, http.StatusOK, transaction)
+}
+
 // ImportCSVHandler imports transactions from a CSV file
 func (h *Handler) ImportCSVHandler(w http.ResponseWriter, r *http.Request) {
 	// Parse multipart form (max 10MB)

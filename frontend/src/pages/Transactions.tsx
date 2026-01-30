@@ -5,8 +5,9 @@ import TransactionFilters from '../components/Transactions/TransactionFilters'
 import AssetPerformanceModal from '../components/Transactions/AssetPerformanceModal'
 import ImportCSVModal from '../components/Transactions/ImportCSVModal'
 import Pagination from '../components/common/Pagination'
-import { useTransactions } from '../hooks/useTransactions'
+import { useTransactions, useUpdateTransaction } from '../hooks/useTransactions'
 import type { FilterValues } from '../components/Transactions/TransactionFilters'
+import type { Transaction } from '../types'
 
 export default function Transactions() {
   const [filters, setFilters] = useState<FilterValues>({})
@@ -26,6 +27,8 @@ export default function Transactions() {
     sort_order: sortOrder,
   })
 
+  const updateTransaction = useUpdateTransaction()
+
   const handleFilterChange = useCallback((newFilters: FilterValues) => {
     setFilters(newFilters)
     setPage(1) // Reset to first page when filters change
@@ -43,6 +46,17 @@ export default function Transactions() {
   const handlePageChange = (newPage: number) => {
     console.log('Page change:', newPage)
     setPage(newPage)
+  }
+
+  const handleUpdateTransaction = async (id: string, updates: Partial<Transaction>) => {
+    try {
+      await updateTransaction.mutateAsync({
+        id,
+        transaction: updates,
+      })
+    } catch (error) {
+      console.error('Failed to update transaction:', error)
+    }
   }
 
   return (
@@ -71,6 +85,7 @@ export default function Transactions() {
           isLoading={isLoading}
           onSort={handleSort}
           onAssetClick={handleAssetClick}
+          onUpdate={handleUpdateTransaction}
         />
 
         {data && data.total_pages > 1 && (

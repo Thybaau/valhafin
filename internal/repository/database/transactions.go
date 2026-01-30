@@ -535,6 +535,65 @@ func (db *DB) GetTransactionByID(id string, platform string) (*models.Transactio
 	return &transaction, nil
 }
 
+// UpdateTransaction updates an existing transaction
+func (db *DB) UpdateTransaction(transaction *models.Transaction, platform string) error {
+	// Validate transaction
+	if err := transaction.Validate(); err != nil {
+		return fmt.Errorf("validation failed: %w", err)
+	}
+
+	tableName := getTransactionTableName(platform)
+
+	// Handle ISIN - convert empty string to NULL
+	var isinValue interface{}
+	if transaction.ISIN != nil && *transaction.ISIN != "" {
+		isinValue = *transaction.ISIN
+	} else {
+		isinValue = nil
+	}
+
+	query := fmt.Sprintf(`
+		UPDATE %s SET
+			title = $1,
+			subtitle = $2,
+			amount_value = $3,
+			amount_currency = $4,
+			fees = $5,
+			quantity = $6,
+			transaction_type = $7,
+			isin = $8
+		WHERE id = $9
+	`, tableName)
+
+	result, err := db.Exec(
+		query,
+		transaction.Title,
+		transaction.Subtitle,
+		transaction.AmountValue,
+		transaction.AmountCurrency,
+		transaction.Fees,
+		transaction.Quantity,
+		transaction.TransactionType,
+		isinValue,
+		transaction.ID,
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed to update transaction: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("transaction not found")
+	}
+
+	return nil
+}
+
 // DeleteTransaction deletes a transaction
 func (db *DB) DeleteTransaction(id string, platform string) error {
 	tableName := getTransactionTableName(platform)
