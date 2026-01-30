@@ -80,6 +80,16 @@ export default function Transactions() {
           initialFilters={filters}
         />
 
+        {data && data.total_pages > 1 && (
+          <div className="mb-6">
+            <Pagination
+              currentPage={page}
+              totalPages={data.total_pages}
+              onPageChange={handlePageChange}
+            />
+          </div>
+        )}
+
         <TransactionTable
           transactions={data?.transactions || []}
           isLoading={isLoading}
