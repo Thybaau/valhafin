@@ -2,7 +2,10 @@ package api
 
 import (
 	"database/sql"
+	"encoding/csv"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 	"sort"
 	"strconv"
@@ -493,8 +496,319 @@ func (h *Handler) sortTransactions(transactions []models.Transaction, sortBy, so
 	})
 }
 
+// ImportSummary represents the result of a CSV import operation
+type ImportSummary struct {
+	Imported int      `json:"imported"`
+	Ignored  int      `json:"ignored"`
+	Errors   int      `json:"errors"`
+	Details  []string `json:"details,omitempty"`
+}
+
+// ImportCSVHandler imports transactions from a CSV file
 func (h *Handler) ImportCSVHandler(w http.ResponseWriter, r *http.Request) {
-	respondError(w, http.StatusNotImplemented, "NOT_IMPLEMENTED", "Not implemented yet", nil)
+	// Parse multipart form (max 10MB)
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
+		respondError(w, http.StatusBadRequest, "INVALID_REQUEST", "Failed to parse form data", nil)
+		return
+	}
+
+	// Get account_id from form
+	accountID := r.FormValue("account_id")
+	if accountID == "" {
+		respondError(w, http.StatusBadRequest, "VALIDATION_ERROR", "account_id is required", map[string]string{
+			"field": "account_id",
+		})
+		return
+	}
+
+	// Check if account exists and get platform
+	account, err := h.DB.GetAccountByID(accountID)
+	if err != nil {
+		if err == sql.ErrNoRows || (err != nil && strings.Contains(err.Error(), "no rows")) {
+			respondError(w, http.StatusNotFound, "NOT_FOUND", "Account not found", nil)
+			return
+		}
+		respondError(w, http.StatusInternalServerError, "DATABASE_ERROR", "Failed to retrieve account", nil)
+		return
+	}
+
+	// Get the file from form
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "VALIDATION_ERROR", "CSV file is required", map[string]string{
+			"field": "file",
+		})
+		return
+	}
+	defer file.Close()
+
+	// Validate file extension
+	if !strings.HasSuffix(strings.ToLower(header.Filename), ".csv") {
+		respondError(w, http.StatusBadRequest, "INVALID_FILE", "File must be a CSV file", map[string]string{
+			"filename": header.Filename,
+		})
+		return
+	}
+
+	// Parse CSV
+	transactions, errors := h.parseCSV(file, accountID)
+
+	// If there are critical parsing errors and no transactions, reject the import
+	if len(transactions) == 0 && len(errors) > 0 {
+		respondError(w, http.StatusBadRequest, "CSV_PARSE_ERROR", "Failed to parse CSV file", map[string]interface{}{
+			"errors": errors,
+		})
+		return
+	}
+
+	// Import transactions with deduplication
+	imported := 0
+	ignored := 0
+	importErrors := []string{}
+
+	// Get existing transaction IDs to detect duplicates
+	existingIDs := make(map[string]bool)
+	existingTransactions, err := h.DB.GetTransactionsByAccount(accountID, account.Platform, database.TransactionFilter{
+		AccountID: accountID,
+		Limit:     10000, // Get all existing transactions
+	})
+	if err == nil {
+		for _, t := range existingTransactions {
+			existingIDs[t.ID] = true
+		}
+	}
+
+	for _, transaction := range transactions {
+		// Validate transaction
+		if err := transaction.Validate(); err != nil {
+			importErrors = append(importErrors, fmt.Sprintf("Transaction %s: %s", transaction.ID, err.Error()))
+			continue
+		}
+
+		// Check if transaction already exists
+		if existingIDs[transaction.ID] {
+			ignored++
+			continue
+		}
+
+		// Try to create transaction
+		err := h.DB.CreateTransaction(&transaction, account.Platform)
+		if err != nil {
+			importErrors = append(importErrors, fmt.Sprintf("Transaction %s: %s", transaction.ID, err.Error()))
+		} else {
+			imported++
+			existingIDs[transaction.ID] = true // Mark as existing for subsequent duplicates in same import
+		}
+	}
+
+	// Combine all errors
+	allErrors := append(errors, importErrors...)
+
+	// Create summary
+	summary := ImportSummary{
+		Imported: imported,
+		Ignored:  ignored,
+		Errors:   len(allErrors),
+		Details:  allErrors,
+	}
+
+	respondJSON(w, http.StatusOK, summary)
+}
+
+// parseCSV parses a CSV file and returns transactions and errors
+func (h *Handler) parseCSV(file io.Reader, accountID string) ([]models.Transaction, []string) {
+	reader := csv.NewReader(file)
+	reader.TrimLeadingSpace = true
+
+	// Read header
+	header, err := reader.Read()
+	if err != nil {
+		return nil, []string{fmt.Sprintf("Failed to read CSV header: %s", err.Error())}
+	}
+
+	// Validate required columns
+	requiredColumns := []string{"timestamp", "isin", "amount_value", "fees"}
+	columnIndices := make(map[string]int)
+	errors := []string{}
+
+	for _, required := range requiredColumns {
+		found := false
+		for i, col := range header {
+			if strings.TrimSpace(strings.ToLower(col)) == required {
+				columnIndices[required] = i
+				found = true
+				break
+			}
+		}
+		if !found {
+			errors = append(errors, fmt.Sprintf("Required column '%s' not found in CSV", required))
+		}
+	}
+
+	// If required columns are missing, return error
+	if len(errors) > 0 {
+		return nil, errors
+	}
+
+	// Map all columns for flexible parsing
+	allColumnIndices := make(map[string]int)
+	for i, col := range header {
+		allColumnIndices[strings.TrimSpace(strings.ToLower(col))] = i
+	}
+
+	// Parse rows
+	transactions := []models.Transaction{}
+	rowNum := 1 // Start at 1 (header is row 0)
+
+	for {
+		row, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			errors = append(errors, fmt.Sprintf("Row %d: Failed to read row: %s", rowNum, err.Error()))
+			rowNum++
+			continue
+		}
+
+		rowNum++
+
+		// Parse transaction from row
+		transaction, err := h.parseCSVRow(row, allColumnIndices, accountID, rowNum)
+		if err != nil {
+			errors = append(errors, fmt.Sprintf("Row %d: %s", rowNum, err.Error()))
+			continue
+		}
+
+		transactions = append(transactions, *transaction)
+	}
+
+	return transactions, errors
+}
+
+// parseCSVRow parses a single CSV row into a Transaction
+func (h *Handler) parseCSVRow(row []string, columnIndices map[string]int, accountID string, rowNum int) (*models.Transaction, error) {
+	transaction := &models.Transaction{
+		AccountID: accountID,
+	}
+
+	// Helper function to get column value safely
+	getColumn := func(name string) string {
+		if idx, ok := columnIndices[name]; ok && idx < len(row) {
+			return strings.TrimSpace(row[idx])
+		}
+		return ""
+	}
+
+	// Parse required fields
+	transaction.Timestamp = getColumn("timestamp")
+	if transaction.Timestamp == "" {
+		return nil, fmt.Errorf("timestamp is required")
+	}
+
+	// Validate timestamp format (should be RFC3339 or similar)
+	_, err := time.Parse(time.RFC3339, transaction.Timestamp)
+	if err != nil {
+		// Try alternative format
+		_, err = time.Parse("2006-01-02T15:04:05", transaction.Timestamp)
+		if err != nil {
+			return nil, fmt.Errorf("invalid timestamp format (expected RFC3339): %s", transaction.Timestamp)
+		}
+	}
+
+	transaction.ISIN = getColumn("isin")
+	if transaction.ISIN == "" {
+		return nil, fmt.Errorf("isin is required")
+	}
+
+	// Parse amount_value
+	amountStr := getColumn("amount_value")
+	if amountStr == "" {
+		return nil, fmt.Errorf("amount_value is required")
+	}
+	amount, err := strconv.ParseFloat(amountStr, 64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid amount_value: %s", amountStr)
+	}
+	transaction.AmountValue = amount
+
+	// Parse fees (required but can be 0)
+	feesStr := getColumn("fees")
+	if feesStr == "" {
+		feesStr = "0"
+	}
+	transaction.Fees = feesStr
+
+	// Parse optional fields
+	transaction.ID = getColumn("id")
+	if transaction.ID == "" {
+		// Generate ID from timestamp + isin + amount if not provided
+		transaction.ID = fmt.Sprintf("%s_%s_%.2f", transaction.Timestamp, transaction.ISIN, transaction.AmountValue)
+	}
+
+	transaction.Title = getColumn("title")
+	transaction.Icon = getColumn("icon")
+	transaction.Avatar = getColumn("avatar")
+	transaction.Subtitle = getColumn("subtitle")
+	transaction.AmountCurrency = getColumn("amount_currency")
+	if transaction.AmountCurrency == "" {
+		transaction.AmountCurrency = "EUR" // Default currency
+	}
+
+	amountFractionStr := getColumn("amount_fraction")
+	if amountFractionStr != "" {
+		fraction, err := strconv.Atoi(amountFractionStr)
+		if err == nil {
+			transaction.AmountFraction = fraction
+		}
+	}
+
+	transaction.Status = getColumn("status")
+	transaction.ActionType = getColumn("action_type")
+	transaction.ActionPayload = getColumn("action_payload")
+	transaction.CashAccountNumber = getColumn("cash_account_number")
+
+	hiddenStr := getColumn("hidden")
+	transaction.Hidden = hiddenStr == "true" || hiddenStr == "1"
+
+	deletedStr := getColumn("deleted")
+	transaction.Deleted = deletedStr == "true" || deletedStr == "1"
+
+	// Parse detail fields
+	transaction.Actions = getColumn("actions")
+	transaction.DividendPerShare = getColumn("dividend_per_share")
+	transaction.Taxes = getColumn("taxes")
+	transaction.Total = getColumn("total")
+	transaction.Shares = getColumn("shares")
+	transaction.SharePrice = getColumn("share_price")
+	transaction.Amount = getColumn("amount")
+
+	// Parse quantity
+	quantityStr := getColumn("quantity")
+	if quantityStr != "" {
+		quantity, err := strconv.ParseFloat(quantityStr, 64)
+		if err == nil {
+			transaction.Quantity = quantity
+		}
+	}
+
+	transaction.TransactionType = getColumn("transaction_type")
+
+	// Parse metadata - must be valid JSON or empty
+	metadata := getColumn("metadata")
+	if metadata != "" {
+		// Validate it's valid JSON
+		var js json.RawMessage
+		if err := json.Unmarshal([]byte(metadata), &js); err != nil {
+			// If not valid JSON, wrap it as a JSON string
+			metadataJSON, _ := json.Marshal(map[string]string{"raw": metadata})
+			transaction.Metadata = string(metadataJSON)
+		} else {
+			transaction.Metadata = metadata
+		}
+	}
+
+	return transaction, nil
 }
 
 // Performance handlers

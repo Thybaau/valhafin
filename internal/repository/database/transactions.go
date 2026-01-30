@@ -26,6 +26,14 @@ func (db *DB) CreateTransaction(transaction *models.Transaction, platform string
 
 	tableName := getTransactionTableName(platform)
 
+	// Handle metadata - convert empty string to NULL for JSONB
+	var metadata interface{}
+	if transaction.Metadata == "" {
+		metadata = nil
+	} else {
+		metadata = transaction.Metadata
+	}
+
 	query := fmt.Sprintf(`
 		INSERT INTO %s (
 			id, account_id, timestamp, title, icon, avatar, subtitle,
@@ -69,7 +77,7 @@ func (db *DB) CreateTransaction(transaction *models.Transaction, platform string
 		transaction.ISIN,
 		transaction.Quantity,
 		transaction.TransactionType,
-		transaction.Metadata,
+		metadata,
 	)
 
 	if err != nil {
@@ -118,6 +126,14 @@ func (db *DB) CreateTransactionsBatch(transactions []models.Transaction, platfor
 			return fmt.Errorf("validation failed for transaction %s: %w", transaction.ID, err)
 		}
 
+		// Handle metadata - convert empty string to NULL for JSONB
+		var metadata interface{}
+		if transaction.Metadata == "" {
+			metadata = nil
+		} else {
+			metadata = transaction.Metadata
+		}
+
 		_, err := stmt.Exec(
 			transaction.ID,
 			transaction.AccountID,
@@ -146,7 +162,7 @@ func (db *DB) CreateTransactionsBatch(transactions []models.Transaction, platfor
 			transaction.ISIN,
 			transaction.Quantity,
 			transaction.TransactionType,
-			transaction.Metadata,
+			metadata,
 		)
 
 		if err != nil {

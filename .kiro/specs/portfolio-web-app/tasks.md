@@ -172,8 +172,8 @@ Ce plan d'implémentation transforme le design en étapes concrètes de dévelop
     - **Propriété 17: Agrégation des frais**
     - **Valide: Exigences 5.1-5.6**
 
-- [ ] 13. Import CSV
-  - [ ] 13.1 Implémenter l'endpoint d'import CSV
+- [x] 13. Import CSV
+  - [x] 13.1 Implémenter l'endpoint d'import CSV
     - POST /api/transactions/import - Importer des transactions depuis CSV
     - Valider le format du CSV (colonnes requises)
     - Parser le CSV et extraire les transactions
@@ -181,7 +181,7 @@ Ce plan d'implémentation transforme le design en étapes concrètes de dévelop
     - Retourner un résumé détaillé (importées, ignorées, erreurs)
     - _Exigences: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6_
   
-  - [ ] 13.2 Écrire les tests de propriété pour l'import CSV
+  - [x] 13.2 Écrire les tests de propriété pour l'import CSV
     - **Propriété 20: Parsing et validation CSV**
     - **Propriété 21: Import CSV avec déduplication**
     - **Valide: Exigences 9.1-9.6**
