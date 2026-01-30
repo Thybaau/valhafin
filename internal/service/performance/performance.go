@@ -33,6 +33,7 @@ func NewPerformanceService(db *database.DB, priceService price.Service) *Perform
 type Performance struct {
 	TotalValue      float64            `json:"total_value"`
 	TotalInvested   float64            `json:"total_invested"`
+	CashBalance     float64            `json:"cash_balance"`
 	TotalFees       float64            `json:"total_fees"`
 	RealizedGains   float64            `json:"realized_gains"`
 	UnrealizedGains float64            `json:"unrealized_gains"`
@@ -166,15 +167,36 @@ func (s *PerformanceService) calculatePerformance(transactions []models.Transact
 	// Group transactions by asset (ISIN)
 	assetHoldings := make(map[string]*assetHolding)
 	var totalFees float64
-	var totalInvested float64
-	var realizedGains float64
+	var totalInvested float64 // Total amount invested (all buys, including sold positions)
+	var totalDeposits float64
+	var totalInterests float64
+	var totalSales float64 // Total amount from sales
 
 	for _, tx := range transactions {
 		// Parse fees from the Fees field
 		fees := parseFees(tx.Fees)
 		totalFees += fees
 
-		// Skip if no ISIN (e.g., pure fee transactions)
+		// Handle different transaction types
+		switch tx.TransactionType {
+		case "deposit":
+			totalDeposits += tx.AmountValue
+			continue
+		case "withdrawal":
+			totalDeposits += tx.AmountValue // AmountValue is negative for withdrawals
+			continue
+		case "interest":
+			totalInterests += tx.AmountValue
+			continue
+		case "fee":
+			continue
+		case "dividend":
+			// Dividends are added to interests
+			totalInterests += tx.AmountValue
+			continue
+		}
+
+		// Skip if no ISIN
 		if tx.ISIN == nil || *tx.ISIN == "" {
 			continue
 		}
@@ -196,57 +218,75 @@ func (s *PerformanceService) calculatePerformance(transactions []models.Transact
 		switch tx.TransactionType {
 		case "buy":
 			holding.Quantity += tx.Quantity
-			holding.Invested += tx.AmountValue
-			totalInvested += tx.AmountValue
+			// AmountValue is negative for buys, so we take absolute value
+			investedAmount := -tx.AmountValue
+			holding.Invested += investedAmount
+			// Add to total invested (all buys, even if later sold)
+			totalInvested += investedAmount
 		case "sell":
+			// Track total sales amount (positive value)
+			totalSales += tx.AmountValue
 			// Calculate realized gain/loss
 			avgCost := 0.0
 			if holding.Quantity > 0 {
 				avgCost = holding.Invested / holding.Quantity
 			}
-			realizedGains += tx.AmountValue - (avgCost * tx.Quantity)
-
 			holding.Quantity -= tx.Quantity
 			holding.Invested -= avgCost * tx.Quantity
-		case "dividend":
-			realizedGains += tx.AmountValue
 		}
 	}
 
-	// Calculate current value of holdings
-	var totalValue float64
+	// Calculate current value of holdings (assets only, no cash)
+	var assetsValue float64
+	var currentInvested float64 // Amount currently invested (still in holdings)
 	for isin, holding := range assetHoldings {
 		if holding.Quantity <= 0 {
 			continue
 		}
 
+		// Add to current invested amount
+		currentInvested += holding.Invested
+
 		// Get current price
 		currentPrice, err := s.PriceService.GetCurrentPrice(isin)
 		if err != nil {
-			// If price not available, use last known value
+			// If price not available, use invested value as fallback
+			assetsValue += holding.Invested
 			continue
 		}
 
-		totalValue += holding.Quantity * currentPrice.Price
+		assetsValue += holding.Quantity * currentPrice.Price
 	}
 
-	// Calculate unrealized gains
-	unrealizedGains := totalValue - calculateRemainingInvestment(assetHoldings)
+	// Calculate cash balance: deposits - buys + sells + interests - fees
+	// This represents the actual cash remaining in the account
+	cashBalance := totalDeposits - totalInvested + totalSales + totalInterests - totalFees
+
+	// Total value = current value of assets only (no cash)
+	totalValue := assetsValue
+
+	// Calculate unrealized gains (current value of assets - invested amount still in holdings)
+	unrealizedGains := assetsValue - currentInvested
 
 	// Calculate performance percentage
 	performancePct := 0.0
 	if totalInvested > 0 {
-		performancePct = ((totalValue + realizedGains - totalInvested - totalFees) / totalInvested) * 100
+		// Performance = (total value - total deposits) / total deposits * 100
+		// This shows the return on the money deposited
+		if totalDeposits > 0 {
+			performancePct = ((totalValue - totalDeposits) / totalDeposits) * 100
+		}
 	}
 
-	// Generate time series (simplified - daily snapshots)
+	// Generate time series
 	timeSeries := s.generateTimeSeries(transactions, assetHoldings, startDate, endDate)
 
 	return &Performance{
 		TotalValue:      totalValue,
-		TotalInvested:   totalInvested,
+		TotalInvested:   currentInvested, // Amount currently invested (not total buys)
+		CashBalance:     cashBalance,
 		TotalFees:       totalFees,
-		RealizedGains:   realizedGains,
+		RealizedGains:   totalSales + totalInterests - totalFees, // Realized gains from sales + interests - fees
 		UnrealizedGains: unrealizedGains,
 		PerformancePct:  performancePct,
 		TimeSeries:      timeSeries,
@@ -368,9 +408,118 @@ func calculateRemainingInvestment(holdings map[string]*assetHolding) float64 {
 
 // generateTimeSeries generates a time series of portfolio values
 func (s *PerformanceService) generateTimeSeries(transactions []models.Transaction, holdings map[string]*assetHolding, startDate, endDate time.Time) []PerformancePoint {
-	// Simplified implementation: return empty for now
-	// Full implementation would replay transactions day by day
-	return []PerformancePoint{}
+	if len(transactions) == 0 {
+		return []PerformancePoint{}
+	}
+
+	// Sort transactions by timestamp
+	sortedTxs := make([]models.Transaction, len(transactions))
+	copy(sortedTxs, transactions)
+
+	// Simple bubble sort by timestamp
+	for i := 0; i < len(sortedTxs); i++ {
+		for j := i + 1; j < len(sortedTxs); j++ {
+			ti, _ := time.Parse(time.RFC3339, sortedTxs[i].Timestamp)
+			tj, _ := time.Parse(time.RFC3339, sortedTxs[j].Timestamp)
+			if ti.After(tj) {
+				sortedTxs[i], sortedTxs[j] = sortedTxs[j], sortedTxs[i]
+			}
+		}
+	}
+
+	// Replay transactions to build time series
+	currentHoldings := make(map[string]*assetHolding)
+	var cashBalance float64
+	var timeSeries []PerformancePoint
+
+	// Add initial point
+	timeSeries = append(timeSeries, PerformancePoint{
+		Date:  startDate,
+		Value: 0,
+	})
+
+	for _, tx := range sortedTxs {
+		txTime, err := time.Parse(time.RFC3339, tx.Timestamp)
+		if err != nil {
+			continue
+		}
+
+		// Process transaction
+		switch tx.TransactionType {
+		case "deposit":
+			cashBalance += tx.AmountValue
+		case "withdrawal":
+			cashBalance += tx.AmountValue
+		case "interest":
+			cashBalance += tx.AmountValue
+		case "fee":
+			cashBalance += tx.AmountValue
+		case "buy":
+			if tx.ISIN != nil && *tx.ISIN != "" {
+				isin := *tx.ISIN
+				if _, exists := currentHoldings[isin]; !exists {
+					currentHoldings[isin] = &assetHolding{ISIN: isin, Quantity: 0, Invested: 0}
+				}
+				currentHoldings[isin].Quantity += tx.Quantity
+				currentHoldings[isin].Invested += -tx.AmountValue
+				cashBalance += tx.AmountValue
+			}
+		case "sell":
+			if tx.ISIN != nil && *tx.ISIN != "" {
+				isin := *tx.ISIN
+				if holding, exists := currentHoldings[isin]; exists {
+					avgCost := 0.0
+					if holding.Quantity > 0 {
+						avgCost = holding.Invested / holding.Quantity
+					}
+					holding.Quantity -= tx.Quantity
+					holding.Invested -= avgCost * tx.Quantity
+				}
+				cashBalance += tx.AmountValue
+			}
+		case "dividend":
+			cashBalance += tx.AmountValue
+		}
+
+		// Calculate current portfolio value
+		portfolioValue := cashBalance
+		for isin, holding := range currentHoldings {
+			if holding.Quantity > 0 {
+				currentPrice, err := s.PriceService.GetCurrentPrice(isin)
+				if err == nil {
+					portfolioValue += holding.Quantity * currentPrice.Price
+				} else {
+					portfolioValue += holding.Invested
+				}
+			}
+		}
+
+		// Add point to time series
+		timeSeries = append(timeSeries, PerformancePoint{
+			Date:  txTime,
+			Value: portfolioValue,
+		})
+	}
+
+	// Add final point (current value)
+	finalValue := cashBalance
+	for isin, holding := range currentHoldings {
+		if holding.Quantity > 0 {
+			currentPrice, err := s.PriceService.GetCurrentPrice(isin)
+			if err == nil {
+				finalValue += holding.Quantity * currentPrice.Price
+			} else {
+				finalValue += holding.Invested
+			}
+		}
+	}
+
+	timeSeries = append(timeSeries, PerformancePoint{
+		Date:  endDate,
+		Value: finalValue,
+	})
+
+	return timeSeries
 }
 
 // generateAssetTimeSeries generates a time series for a specific asset

@@ -44,6 +44,7 @@ export interface AssetPrice {
 export interface Performance {
   total_value: number
   total_invested: number
+  cash_balance: number
   total_fees: number
   realized_gains: number
   unrealized_gains: number

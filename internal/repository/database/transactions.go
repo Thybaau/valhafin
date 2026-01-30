@@ -232,7 +232,7 @@ func (db *DB) GetTransactionsByAccount(accountID string, platform string, filter
 			actions, dividend_per_share, taxes, total, shares, share_price,
 			fees, amount, isin, quantity, transaction_type, metadata
 		FROM %s
-		WHERE account_id = $1
+		WHERE account_id = $1 AND (subtitle IS NULL OR subtitle != 'Échec du plan d''épargne')
 	`, tableName)
 
 	args := []interface{}{accountID}
@@ -300,7 +300,7 @@ func (db *DB) GetTransactionsByAccountWithSort(accountID string, platform string
 			actions, dividend_per_share, taxes, total, shares, share_price,
 			fees, amount, isin, quantity, transaction_type, metadata
 		FROM %s
-		WHERE account_id = $1
+		WHERE account_id = $1 AND (subtitle IS NULL OR subtitle != 'Échec du plan d''épargne')
 	`, tableName)
 
 	args := []interface{}{accountID}
@@ -384,7 +384,7 @@ func (db *DB) GetAllTransactions(platform string, filter TransactionFilter) ([]m
 			actions, dividend_per_share, taxes, total, shares, share_price,
 			fees, amount, isin, quantity, transaction_type, metadata
 		FROM %s
-		WHERE 1=1
+		WHERE (subtitle IS NULL OR subtitle != 'Échec du plan d''épargne')
 	`, tableName)
 
 	args := []interface{}{}
@@ -452,7 +452,7 @@ func (db *DB) GetAllTransactionsWithSort(platform string, filter TransactionFilt
 			actions, dividend_per_share, taxes, total, shares, share_price,
 			fees, amount, isin, quantity, transaction_type, metadata
 		FROM %s
-		WHERE 1=1
+		WHERE (subtitle IS NULL OR subtitle != 'Échec du plan d''épargne')
 	`, tableName)
 
 	args := []interface{}{}
@@ -621,7 +621,7 @@ func (db *DB) DeleteTransaction(id string, platform string) error {
 func (db *DB) CountTransactions(platform string, filter TransactionFilter) (int, error) {
 	tableName := getTransactionTableName(platform)
 
-	query := fmt.Sprintf(`SELECT COUNT(*) FROM %s WHERE 1=1`, tableName)
+	query := fmt.Sprintf(`SELECT COUNT(*) FROM %s WHERE (subtitle IS NULL OR subtitle != 'Échec du plan d''épargne')`, tableName)
 
 	args := []interface{}{}
 	argCount := 0

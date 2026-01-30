@@ -1,41 +1,65 @@
 import { useQuery } from '@tanstack/react-query'
-import { performanceApi } from '../services'
-import type { Period } from '../services'
+import { performanceApi, assetsApi } from '../services'
 
 // Query keys
 export const performanceKeys = {
   all: ['performance'] as const,
-  global: (period: Period) => ['performance', 'global', period] as const,
-  byAccount: (accountId: string, period: Period) =>
+  global: (period?: string) => ['performance', 'global', period] as const,
+  account: (accountId: string, period?: string) =>
     ['performance', 'account', accountId, period] as const,
-  byAsset: (isin: string, period: Period) =>
-    ['performance', 'asset', isin, period] as const,
+  asset: (isin: string, period?: string) => ['performance', 'asset', isin, period] as const,
+}
+
+export const assetKeys = {
+  all: ['assets'] as const,
+  price: (isin: string) => ['assets', 'price', isin] as const,
+  history: (isin: string) => ['assets', 'history', isin] as const,
 }
 
 // Hook pour récupérer la performance globale
-export function useGlobalPerformance(period: Period = '1m') {
+export function useGlobalPerformance(period?: string) {
   return useQuery({
     queryKey: performanceKeys.global(period),
     queryFn: () => performanceApi.getGlobal(period),
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 2 * 60 * 1000, // 2 minutes
   })
 }
 
 // Hook pour récupérer la performance d'un compte
-export function useAccountPerformance(accountId: string, period: Period = '1m') {
+export function useAccountPerformance(accountId: string, period?: string) {
   return useQuery({
-    queryKey: performanceKeys.byAccount(accountId, period),
+    queryKey: performanceKeys.account(accountId, period),
     queryFn: () => performanceApi.getByAccount(accountId, period),
     enabled: !!accountId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 2 * 60 * 1000,
   })
 }
 
 // Hook pour récupérer la performance d'un actif
-export function useAssetPerformance(isin: string, period: Period = '1m') {
+export function useAssetPerformance(isin: string, enabled: boolean = true) {
   return useQuery({
-    queryKey: performanceKeys.byAsset(isin, period),
-    queryFn: () => performanceApi.getByAsset(isin, period),
+    queryKey: performanceKeys.asset(isin),
+    queryFn: () => performanceApi.getByAsset(isin),
+    enabled: enabled && !!isin,
+    staleTime: 2 * 60 * 1000,
+  })
+}
+
+// Hook pour récupérer le prix actuel d'un actif
+export function useAssetPrice(isin: string, enabled: boolean = true) {
+  return useQuery({
+    queryKey: assetKeys.price(isin),
+    queryFn: () => assetsApi.getPrice(isin),
+    enabled: enabled && !!isin,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  })
+}
+
+// Hook pour récupérer l'historique des prix d'un actif
+export function useAssetPriceHistory(isin: string) {
+  return useQuery({
+    queryKey: assetKeys.history(isin),
+    queryFn: () => assetsApi.getPriceHistory(isin),
     enabled: !!isin,
     staleTime: 5 * 60 * 1000,
   })

@@ -268,21 +268,21 @@ Ce plan d'implémentation transforme le design en étapes concrètes de dévelop
     - Gérer les erreurs d'import
     - _Exigences: 9.1, 9.2, 9.3, 9.6_
 
-- [ ] 20. Frontend - Graphiques de performance
-  - [ ] 20.1 Implémenter PerformanceChart avec Recharts
+- [x] 20. Frontend - Graphiques de performance
+  - [x] 20.1 Implémenter PerformanceChart avec Recharts
     - Créer le graphique de ligne pour l'évolution de la valeur
     - Implémenter le sélecteur de période (1m, 3m, 1y, all)
     - Implémenter le tooltip personnalisé avec date et valeur
     - Appliquer le style avec gradient bleu
     - _Exigences: 4.1, 4.2, 4.3, 4.7_
   
-  - [ ] 20.2 Créer PerformanceMetrics pour afficher les métriques
+  - [x] 20.2 Créer PerformanceMetrics pour afficher les métriques
     - Afficher la valeur totale, investissement, gains/pertes
     - Afficher la performance en pourcentage
     - Utiliser des couleurs (vert pour gains, rouge pour pertes)
     - _Exigences: 4.4, 4.5, 4.6_
   
-  - [ ] 20.3 Créer AssetPerformanceModal
+  - [x] 20.3 Créer AssetPerformanceModal
     - Afficher le nom de l'actif, ISIN, et prix actuel
     - Afficher le graphique de performance de l'actif
     - Afficher les métriques de l'actif

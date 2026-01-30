@@ -1,5 +1,6 @@
 import apiClient from './api'
-import type { Period } from './performance'
+
+type Period = '1m' | '3m' | '1y' | 'all'
 
 export interface FeesMetrics {
   total_fees: number

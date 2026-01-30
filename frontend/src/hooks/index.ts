@@ -13,6 +13,7 @@ export {
   useTransactions,
   useAccountTransactions,
   useImportCSV,
+  useUpdateTransaction,
   transactionKeys,
 } from './useTransactions'
 
@@ -20,7 +21,10 @@ export {
   useGlobalPerformance,
   useAccountPerformance,
   useAssetPerformance,
+  useAssetPrice,
+  useAssetPriceHistory,
   performanceKeys,
+  assetKeys,
 } from './usePerformance'
 
 export {
@@ -28,9 +32,3 @@ export {
   useAccountFees,
   feesKeys,
 } from './useFees'
-
-export {
-  useAssetPrice,
-  useAssetPriceHistory,
-  assetKeys,
-} from './useAssets'
