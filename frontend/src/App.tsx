@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Layout from './components/Layout/Layout'
 import Dashboard from './pages/Dashboard'
+import Accounts from './pages/Accounts'
 import Transactions from './pages/Transactions'
 import Performance from './pages/Performance'
 import Fees from './pages/Fees'
@@ -22,6 +23,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Layout />}>
             <Route index element={<Dashboard />} />
+            <Route path="accounts" element={<Accounts />} />
             <Route path="transactions" element={<Transactions />} />
             <Route path="performance" element={<Performance />} />
             <Route path="fees" element={<Fees />} />

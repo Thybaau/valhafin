@@ -1,6 +1,11 @@
+import { Link } from 'react-router-dom'
 import Header from '../components/Layout/Header'
+import { useAccounts, useGlobalPerformance } from '../hooks'
+import LoadingSpinner from '../components/common/LoadingSpinner'
 
 export default function Dashboard() {
+  const { data: accounts, isLoading: accountsLoading } = useAccounts()
+  const { data: performance, isLoading: perfLoading } = useGlobalPerformance('1m')
   return (
     <div>
       <Header 
@@ -13,23 +18,61 @@ export default function Dashboard() {
           {/* Placeholder cards for metrics */}
           <div className="card">
             <p className="text-text-muted text-sm mb-2">Valeur Totale</p>
-            <p className="text-3xl font-bold text-text-primary">€0.00</p>
-            <p className="text-success text-sm mt-2">+0.00%</p>
+            {perfLoading ? (
+              <div className="h-10 flex items-center">
+                <div className="animate-pulse bg-background-tertiary h-8 w-24 rounded"></div>
+              </div>
+            ) : (
+              <>
+                <p className="text-3xl font-bold text-text-primary">
+                  €{performance?.total_value.toFixed(2) || '0.00'}
+                </p>
+                <p className={`text-sm mt-2 ${(performance?.performance_pct || 0) >= 0 ? 'text-success' : 'text-error'}`}>
+                  {(performance?.performance_pct || 0) >= 0 ? '+' : ''}
+                  {performance?.performance_pct.toFixed(2) || '0.00'}%
+                </p>
+              </>
+            )}
           </div>
           
           <div className="card">
             <p className="text-text-muted text-sm mb-2">Investissement</p>
-            <p className="text-3xl font-bold text-text-primary">€0.00</p>
+            {perfLoading ? (
+              <div className="h-10 flex items-center">
+                <div className="animate-pulse bg-background-tertiary h-8 w-24 rounded"></div>
+              </div>
+            ) : (
+              <p className="text-3xl font-bold text-text-primary">
+                €{performance?.total_invested.toFixed(2) || '0.00'}
+              </p>
+            )}
           </div>
           
           <div className="card">
             <p className="text-text-muted text-sm mb-2">Gains/Pertes</p>
-            <p className="text-3xl font-bold text-text-primary">€0.00</p>
+            {perfLoading ? (
+              <div className="h-10 flex items-center">
+                <div className="animate-pulse bg-background-tertiary h-8 w-24 rounded"></div>
+              </div>
+            ) : (
+              <p className={`text-3xl font-bold ${(performance?.unrealized_gains || 0) >= 0 ? 'text-success' : 'text-error'}`}>
+                {(performance?.unrealized_gains || 0) >= 0 ? '+' : ''}
+                €{performance?.unrealized_gains.toFixed(2) || '0.00'}
+              </p>
+            )}
           </div>
           
           <div className="card">
             <p className="text-text-muted text-sm mb-2">Frais Totaux</p>
-            <p className="text-3xl font-bold text-text-primary">€0.00</p>
+            {perfLoading ? (
+              <div className="h-10 flex items-center">
+                <div className="animate-pulse bg-background-tertiary h-8 w-24 rounded"></div>
+              </div>
+            ) : (
+              <p className="text-3xl font-bold text-text-primary">
+                €{performance?.total_fees.toFixed(2) || '0.00'}
+              </p>
+            )}
           </div>
         </div>
 
@@ -42,17 +85,53 @@ export default function Dashboard() {
           </div>
 
           <div className="card">
-            <h2 className="text-xl font-semibold mb-4">Comptes</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold">Comptes</h2>
+              <Link to="/accounts" className="text-accent-primary hover:text-accent-hover text-sm">
+                Voir tout →
+              </Link>
+            </div>
             <div className="space-y-3">
-              <p className="text-text-muted text-center py-8">
-                Aucun compte connecté
-              </p>
+              {accountsLoading ? (
+                <LoadingSpinner />
+              ) : accounts && accounts.length > 0 ? (
+                accounts.slice(0, 3).map((account) => (
+                  <div
+                    key={account.id}
+                    className="flex items-center justify-between p-3 bg-background-tertiary rounded-md"
+                  >
+                    <div>
+                      <p className="text-text-primary font-medium">{account.name}</p>
+                      <p className="text-text-muted text-sm capitalize">{account.platform}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-text-primary text-sm">
+                        {account.last_sync
+                          ? new Date(account.last_sync).toLocaleDateString('fr-FR')
+                          : 'Non synchronisé'}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-text-muted mb-4">Aucun compte connecté</p>
+                  <Link to="/accounts" className="btn-primary inline-block">
+                    Ajouter un compte
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
         <div className="card mt-6">
-          <h2 className="text-xl font-semibold mb-4">Dernières Transactions</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">Dernières Transactions</h2>
+            <Link to="/transactions" className="text-accent-primary hover:text-accent-hover text-sm">
+              Voir tout →
+            </Link>
+          </div>
           <div className="text-text-muted text-center py-8">
             Aucune transaction
           </div>

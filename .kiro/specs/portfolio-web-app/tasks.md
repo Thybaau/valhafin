@@ -238,8 +238,8 @@ Ce plan d'implémentation transforme le design en étapes concrètes de dévelop
     - Configurer le cache et les stratégies de refetch
     - _Exigences: 7.1_
 
-- [ ] 18. Frontend - Gestion des comptes
-  - [ ] 18.1 Implémenter la page de gestion des comptes
+- [x] 18. Frontend - Gestion des comptes
+  - [x] 18.1 Implémenter la page de gestion des comptes
     - Créer AccountList pour afficher tous les comptes
     - Créer AccountCard pour afficher un compte
     - Créer AddAccountModal pour ajouter un nouveau compte
@@ -247,7 +247,7 @@ Ce plan d'implémentation transforme le design en étapes concrètes de dévelop
     - Implémenter la suppression d'un compte
     - _Exigences: 1.1, 1.2, 1.3, 1.4, 1.6, 2.1_
   
-  - [ ] 18.2 Écrire les tests E2E pour la gestion des comptes
+  - [x] 18.2 Écrire les tests E2E pour la gestion des comptes
     - Tester l'ajout d'un compte
     - Tester la synchronisation
     - Tester la suppression
