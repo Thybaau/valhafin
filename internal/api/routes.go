@@ -1,6 +1,7 @@
 package api
 
 import (
+	"time"
 	"valhafin/internal/repository/database"
 	"valhafin/internal/service/encryption"
 	"valhafin/internal/service/fees"
@@ -21,6 +22,11 @@ type Services struct {
 
 // SetupRoutes configures all API routes and returns the router and services
 func SetupRoutes(db *database.DB, encryptionService *encryption.EncryptionService) (*mux.Router, *Services) {
+	return SetupRoutesWithVersion(db, encryptionService, "dev", time.Now())
+}
+
+// SetupRoutesWithVersion configures all API routes with version and start time
+func SetupRoutesWithVersion(db *database.DB, encryptionService *encryption.EncryptionService, version string, startTime time.Time) (*mux.Router, *Services) {
 	router := mux.NewRouter()
 
 	// Create scraper factory
@@ -40,8 +46,11 @@ func SetupRoutes(db *database.DB, encryptionService *encryption.EncryptionServic
 
 	// Create handler with dependencies
 	handler := NewHandler(db, encryptionService, syncService, priceService, performanceService, feesService)
+	handler.Version = version
+	handler.StartTime = startTime
 
 	// Apply middleware
+	router.Use(RecoveryMiddleware)
 	router.Use(CORSMiddleware)
 	router.Use(LoggingMiddleware)
 

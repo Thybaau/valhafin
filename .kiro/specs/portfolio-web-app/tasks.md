@@ -186,18 +186,18 @@ Ce plan d'implémentation transforme le design en étapes concrètes de dévelop
     - **Propriété 21: Import CSV avec déduplication**
     - **Valide: Exigences 9.1-9.6**
 
-- [ ] 14. Middleware et gestion d'erreurs backend
-  - [ ] 14.1 Implémenter les middlewares
+- [x] 14. Middleware et gestion d'erreurs backend
+  - [x] 14.1 Implémenter les middlewares
     - Middleware CORS pour le frontend
     - Middleware de logging des requêtes
     - Middleware de gestion d'erreurs globale
     - _Exigences: 7.4, 7.5, 7.6_
   
-  - [ ] 14.2 Implémenter le endpoint de health check
+  - [x] 14.2 Implémenter le endpoint de health check
     - GET /health - Vérifier l'état de l'application et de la base de données
     - _Exigences: 11.6_
   
-  - [ ] 14.3 Écrire les tests de propriété pour la validation et les erreurs
+  - [x] 14.3 Écrire les tests de propriété pour la validation et les erreurs
     - **Propriété 18: Validation des entrées API**
     - **Propriété 23: Logging des requêtes et erreurs**
     - **Propriété 26: Health check**

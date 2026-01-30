@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 	"time"
@@ -49,9 +50,51 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 type responseWriter struct {
 	http.ResponseWriter
 	statusCode int
+	written    bool
 }
 
 func (rw *responseWriter) WriteHeader(code int) {
-	rw.statusCode = code
-	rw.ResponseWriter.WriteHeader(code)
+	if !rw.written {
+		rw.statusCode = code
+		rw.ResponseWriter.WriteHeader(code)
+		rw.written = true
+	}
+}
+
+func (rw *responseWriter) Write(b []byte) (int, error) {
+	if !rw.written {
+		rw.WriteHeader(http.StatusOK)
+	}
+	return rw.ResponseWriter.Write(b)
+}
+
+// RecoveryMiddleware handles panics and returns a 500 error
+func RecoveryMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if err := recover(); err != nil {
+				log.Printf("PANIC: %v", err)
+
+				// Check if headers have already been written
+				if rw, ok := w.(*responseWriter); ok && rw.written {
+					// Headers already sent, can't send error response
+					return
+				}
+
+				// Send error response
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusInternalServerError)
+				response := map[string]interface{}{
+					"error": map[string]interface{}{
+						"code":    "INTERNAL_ERROR",
+						"message": "An internal server error occurred",
+					},
+				}
+				// Ignore encoding errors at this point
+				_ = json.NewEncoder(w).Encode(response)
+			}
+		}()
+
+		next.ServeHTTP(w, r)
+	})
 }

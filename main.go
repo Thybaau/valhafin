@@ -9,12 +9,19 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"valhafin/internal/api"
 	"valhafin/internal/config"
 	"valhafin/internal/repository/database"
 	encryptionsvc "valhafin/internal/service/encryption"
 	"valhafin/internal/service/scheduler"
+)
+
+var (
+	// Version is set at build time
+	Version   = "dev"
+	StartTime = time.Now()
 )
 
 func main() {
@@ -54,7 +61,7 @@ func main() {
 	}
 
 	// Setup routes and get services
-	router, services := api.SetupRoutes(db, encryptionService)
+	router, services := api.SetupRoutesWithVersion(db, encryptionService, Version, StartTime)
 
 	// Initialize and start scheduler
 	sched := scheduler.NewScheduler(services.PriceService, services.SyncService)

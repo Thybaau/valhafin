@@ -43,6 +43,8 @@ type Handler struct {
 	PriceService       price.Service
 	PerformanceService performance.Service
 	FeesService        fees.Service
+	Version            string
+	StartTime          time.Time
 }
 
 // NewHandler creates a new Handler with dependencies
@@ -55,6 +57,8 @@ func NewHandler(db *database.DB, encryptionService *encryptionsvc.EncryptionServ
 		PriceService:       priceService,
 		PerformanceService: performanceService,
 		FeesService:        feesService,
+		Version:            "dev",
+		StartTime:          time.Now(),
 	}
 }
 
@@ -80,15 +84,20 @@ func respondError(w http.ResponseWriter, status int, code, message string, detai
 func (h *Handler) HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	// Check database connection
 	if err := h.DB.Ping(); err != nil {
-		respondJSON(w, http.StatusServiceUnavailable, map[string]string{
+		respondJSON(w, http.StatusServiceUnavailable, map[string]interface{}{
 			"status":   "unhealthy",
 			"database": "down",
+			"error":    err.Error(),
 		})
 		return
 	}
 
-	respondJSON(w, http.StatusOK, map[string]string{
-		"status": "healthy",
+	uptime := time.Since(h.StartTime)
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"status":   "healthy",
+		"version":  h.Version,
+		"uptime":   uptime.String(),
+		"database": "up",
 	})
 }
 
