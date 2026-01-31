@@ -1,14 +1,9 @@
 package traderepublic
 
 import (
-	"bytes"
-	"encoding/csv"
-	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 	"valhafin/internal/domain/models"
@@ -216,11 +211,6 @@ func (s *Scraper) convertTimelineTransactions(timelineTransactions []TimelineTra
 			isinPtr = &isin
 		}
 
-		// TODO: Fetch fees for buy/sell transactions
-		// For now, keep fees at 0 as fetching details for each transaction is too slow
-		// We could implement this as a background job later
-		fees := "0"
-
 		tx := models.Transaction{
 			ID:              tt.ID,
 			Timestamp:       timestamp.Format(time.RFC3339),
@@ -229,11 +219,19 @@ func (s *Scraper) convertTimelineTransactions(timelineTransactions []TimelineTra
 			ISIN:            isinPtr,
 			AmountValue:     amountValue,
 			AmountCurrency:  amountCurrency,
-			Fees:            fees,
+			Fees:            "0",
 			Quantity:        0,
 			TransactionType: transactionType,
 			Status:          "completed",
 			Icon:            tt.Icon,
+		}
+
+		// Fetch details for buy/sell transactions to get shares, price, and fees
+		if transactionType == "buy" || transactionType == "sell" {
+			if err := enrichTransactionWithDetails(&tx, wsClient); err != nil {
+				log.Printf("Warning: Failed to fetch details for transaction %s: %v", tx.ID, err)
+				// Continue without details rather than failing
+			}
 		}
 
 		transactions = append(transactions, tx)
@@ -336,268 +334,36 @@ func (s *Scraper) determineTransactionTypeFromIcon(icon, title, subtitle string,
 	return "other"
 }
 
-// TimelineEvent represents a Trade Republic timeline event
-type TimelineEvent struct {
-	Type string `json:"type"`
-	Data struct {
-		ID               string  `json:"id"`
-		Timestamp        int64   `json:"timestamp"`
-		Icon             string  `json:"icon"`
-		Title            string  `json:"title"`
-		Body             string  `json:"body"`
-		CashChangeAmount float64 `json:"cashChangeAmount"`
-		Action           struct {
-			Type    string `json:"type"`
-			Payload string `json:"payload"`
-		} `json:"action"`
-		Month string `json:"month"`
-	} `json:"data"`
-}
+// enrichTransactionWithDetails fetches transaction details and enriches the transaction with shares, price, and fees
+func enrichTransactionWithDetails(tx *models.Transaction, wsClient *WebSocketClient) error {
+	if wsClient == nil {
+		return fmt.Errorf("WebSocket client not initialized")
+	}
 
-// fetchTimelineEvents fetches timeline events from Trade Republic API
-func (s *Scraper) fetchTimelineEvents(sessionToken string) ([]TimelineEvent, error) {
-	// Trade Republic timeline endpoint
-	timelineURL := baseURL + "/api/v1/timeline"
-
-	req, err := http.NewRequest("GET", timelineURL, nil)
+	// Fetch transaction detail
+	detail, err := wsClient.FetchTransactionDetail(tx.ID)
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("failed to fetch transaction detail: %w", err)
 	}
 
-	req.Header.Set("User-Agent", userAgent)
-	req.Header.Set("Cookie", "tr_session="+sessionToken)
-
-	resp, err := s.client.Do(req)
+	// Extract shares and price
+	shares, sharePrice, err := ExtractSharesAndPriceFromDetail(detail)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch timeline: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("failed to fetch timeline: status %d, body: %s", resp.StatusCode, string(body))
-	}
-
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read timeline response: %w", err)
+		// Not all transactions have shares/price (e.g., some corporate actions)
+		// This is not necessarily an error
+		fmt.Printf("Info: Could not extract shares/price for transaction %s: %v\n", tx.ID, err)
+	} else {
+		// Store shares and share_price as strings for now (model uses string fields)
+		tx.Shares = fmt.Sprintf("%.2f", shares)
+		tx.SharePrice = fmt.Sprintf("%.2f", sharePrice)
+		tx.Quantity = shares // Quantity is the number of shares
 	}
 
-	fmt.Printf("DEBUG: Downloaded timeline data, size: %d bytes\n", len(data))
-
-	// Parse timeline events
-	var events []TimelineEvent
-	if err := json.Unmarshal(data, &events); err != nil {
-		return nil, fmt.Errorf("failed to parse timeline events: %w", err)
+	// Extract fees
+	feesStr := ExtractFeesFromDetail(detail)
+	if feesStr != "0" {
+		tx.Fees = feesStr
 	}
 
-	fmt.Printf("DEBUG: Parsed %d timeline events\n", len(events))
-	return events, nil
-}
-
-// parseTimelineEvents converts timeline events to Transaction models
-func (s *Scraper) parseTimelineEvents(events []TimelineEvent) []models.Transaction {
-	transactions := make([]models.Transaction, 0, len(events))
-
-	for _, event := range events {
-		if event.Type != "timelineEvent" {
-			continue
-		}
-
-		// Convert timestamp from milliseconds to time.Time
-		timestamp := time.Unix(0, event.Data.Timestamp*int64(time.Millisecond))
-
-		// Determine transaction type from icon or body
-		transactionType := s.determineTransactionTypeFromEvent(event)
-
-		// Extract ISIN from action payload if available
-		var isinPtr *string
-		if event.Data.Action.Type == "timelineDetail" && event.Data.Action.Payload != "" {
-			isinPtr = &event.Data.Action.Payload
-		}
-
-		tx := models.Transaction{
-			ID:              event.Data.ID,
-			Timestamp:       timestamp.Format(time.RFC3339),
-			Title:           event.Data.Title,
-			Subtitle:        event.Data.Body,
-			ISIN:            isinPtr,
-			AmountValue:     event.Data.CashChangeAmount,
-			AmountCurrency:  "EUR", // Trade Republic uses EUR
-			Fees:            "0",   // Fees are included in the cash change amount
-			Quantity:        0,     // Not provided in timeline events
-			TransactionType: transactionType,
-			Status:          "completed",
-			Icon:            event.Data.Icon,
-		}
-
-		transactions = append(transactions, tx)
-	}
-
-	fmt.Printf("DEBUG: Converted %d timeline events to transactions\n", len(transactions))
-	return transactions
-}
-
-// determineTransactionTypeFromEvent determines the transaction type from a timeline event
-// determineTransactionTypeFromEvent determines the transaction type from a timeline event
-func (s *Scraper) determineTransactionTypeFromEvent(event TimelineEvent) string {
-	// Reuse the main function with title, body and cash change amount
-	return s.determineTransactionTypeFromIcon(event.Data.Icon, event.Data.Title, event.Data.Body, event.Data.CashChangeAmount)
-}
-
-// downloadCSVExport downloads the CSV export from Trade Republic (DEPRECATED - kept for reference)
-func (s *Scraper) downloadCSVExport(sessionToken string) ([]byte, error) {
-	// Trade Republic CSV export endpoint
-	exportURL := baseURL + "/api/v1/timeline/export"
-
-	req, err := http.NewRequest("GET", exportURL, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set("User-Agent", userAgent)
-	req.Header.Set("Cookie", "tr_session="+sessionToken)
-
-	resp, err := s.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to download CSV: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to download CSV: status %d", resp.StatusCode)
-	}
-
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read CSV response: %w", err)
-	}
-
-	fmt.Printf("DEBUG: Downloaded CSV data, size: %d bytes\n", len(data))
-	return data, nil
-}
-
-// parseCSVTransactions parses CSV data into Transaction models
-func (s *Scraper) parseCSVTransactions(csvData []byte) ([]models.Transaction, error) {
-	reader := csv.NewReader(bytes.NewReader(csvData))
-	reader.Comma = ','
-	reader.LazyQuotes = true
-
-	// Read all records
-	records, err := reader.ReadAll()
-	if err != nil {
-		return nil, fmt.Errorf("failed to read CSV: %w", err)
-	}
-
-	fmt.Printf("DEBUG: CSV has %d records (including header)\n", len(records))
-
-	if len(records) == 0 {
-		return []models.Transaction{}, nil
-	}
-
-	// Print header for debugging
-	if len(records) > 0 {
-		fmt.Printf("DEBUG: CSV header: %v\n", records[0])
-	}
-
-	// Skip header row
-	if len(records) > 0 {
-		records = records[1:]
-	}
-
-	transactions := make([]models.Transaction, 0, len(records))
-
-	for i, record := range records {
-		if len(record) < 8 {
-			fmt.Printf("DEBUG: Skipping row %d - insufficient columns (%d)\n", i+1, len(record))
-			continue // Skip invalid rows
-		}
-
-		// Parse timestamp
-		timestamp, err := time.Parse("2006-01-02 15:04:05", record[0])
-		if err != nil {
-			// Try alternative format
-			timestamp, err = time.Parse("02.01.2006", record[0])
-			if err != nil {
-				fmt.Printf("DEBUG: Skipping row %d - invalid timestamp: %s\n", i+1, record[0])
-				continue
-			}
-		}
-
-		// Parse amount
-		amountStr := strings.ReplaceAll(record[4], ",", ".")
-		amountStr = strings.TrimSpace(amountStr)
-		amount, err := strconv.ParseFloat(amountStr, 64)
-		if err != nil {
-			fmt.Printf("DEBUG: Row %d - failed to parse amount: %s\n", i+1, record[4])
-			amount = 0
-		}
-
-		// Parse fees if present
-		feesStr := "0"
-		if len(record) > 7 && record[7] != "" {
-			feesStr = strings.ReplaceAll(record[7], ",", ".")
-			feesStr = strings.TrimSpace(feesStr)
-		}
-
-		// Parse quantity if present
-		quantity := 0.0
-		if len(record) > 6 && record[6] != "" {
-			quantityStr := strings.ReplaceAll(record[6], ",", ".")
-			quantityStr = strings.TrimSpace(quantityStr)
-			quantity, _ = strconv.ParseFloat(quantityStr, 64)
-		}
-
-		// Convert ISIN to pointer
-		isinStr := record[3]
-		var isinPtr *string
-		if isinStr != "" {
-			isinPtr = &isinStr
-		}
-
-		tx := models.Transaction{
-			ID:              fmt.Sprintf("tr_%d", timestamp.Unix()),
-			Timestamp:       timestamp.Format(time.RFC3339),
-			Title:           record[1],
-			Subtitle:        record[2],
-			ISIN:            isinPtr,
-			AmountValue:     amount,
-			AmountCurrency:  record[5],
-			Fees:            feesStr,
-			Quantity:        quantity,
-			TransactionType: s.determineTransactionType(record[1]),
-			Status:          "completed",
-		}
-
-		transactions = append(transactions, tx)
-	}
-
-	fmt.Printf("DEBUG: Parsed %d transactions from CSV\n", len(transactions))
-	return transactions, nil
-}
-
-// determineTransactionType determines the transaction type from the title
-func (s *Scraper) determineTransactionType(title string) string {
-	title = strings.ToLower(title)
-
-	if strings.Contains(title, "kauf") || strings.Contains(title, "buy") {
-		return "buy"
-	}
-	if strings.Contains(title, "verkauf") || strings.Contains(title, "sell") {
-		return "sell"
-	}
-	if strings.Contains(title, "dividende") || strings.Contains(title, "dividend") {
-		return "dividend"
-	}
-	if strings.Contains(title, "gebühr") || strings.Contains(title, "fee") {
-		return "fee"
-	}
-	if strings.Contains(title, "einzahlung") || strings.Contains(title, "deposit") {
-		return "deposit"
-	}
-	if strings.Contains(title, "auszahlung") || strings.Contains(title, "withdrawal") {
-		return "withdrawal"
-	}
-
-	return "other"
+	return nil
 }

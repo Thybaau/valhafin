@@ -15,6 +15,16 @@ type loginResponse struct {
 	CountdownInSeconds int    `json:"countdownInSeconds"`
 }
 
+// Authenticate performs the authentication flow for Trade Republic (exported for CLI tools)
+func (s *Scraper) Authenticate(phoneNumber, pin string) (string, error) {
+	return s.authenticate(phoneNumber, pin)
+}
+
+// Complete2FA completes the 2FA authentication process (exported for CLI tools)
+func (s *Scraper) Complete2FA(processID, code string) (string, error) {
+	return s.Authenticate2FA(processID, code)
+}
+
 // authenticate performs the authentication flow for Trade Republic
 // Note: This is a simplified version that doesn't handle 2FA interactively
 // In a production environment, this would need to be handled differently

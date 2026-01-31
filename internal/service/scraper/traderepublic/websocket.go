@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 	"time"
 
@@ -80,18 +81,14 @@ type TimelineTransaction struct {
 	Action    map[string]interface{} `json:"action"`
 }
 
-// TimelineDetail represents detailed information about a transaction
+// TimelineDetail represents detailed information about a transaction (V2)
 type TimelineDetail struct {
+	ID       string `json:"id"`
 	Sections []struct {
-		Type string `json:"type"`
-		Data struct {
-			Items []struct {
-				Title  string `json:"title"`
-				Detail struct {
-					Text string `json:"text"`
-				} `json:"detail"`
-			} `json:"items"`
-		} `json:"data"`
+		Title  string      `json:"title"`
+		Type   string      `json:"type"`
+		Data   interface{} `json:"data"` // Can be array or object
+		Action interface{} `json:"action"`
 	} `json:"sections"`
 }
 
@@ -198,9 +195,9 @@ func min(a, b int) int {
 func (c *WebSocketClient) FetchTransactionDetail(transactionID string) (*TimelineDetail, error) {
 	c.messageID++
 
-	// Build payload for timelineDetail
+	// Build payload for timelineDetailV2
 	payload := map[string]interface{}{
-		"type":  "timelineDetail",
+		"type":  "timelineDetailV2",
 		"id":    transactionID,
 		"token": c.sessionToken,
 	}
@@ -256,27 +253,181 @@ func ExtractFeesFromDetail(detail *TimelineDetail) string {
 		return "0"
 	}
 
-	// Look for "Frais" or "Gebühren" in the sections
+	// Look for "Frais" or "Gebühren" or "Fee" in the sections
 	for _, section := range detail.Sections {
 		if section.Type == "table" {
-			for _, item := range section.Data.Items {
-				titleLower := strings.ToLower(item.Title)
-				if strings.Contains(titleLower, "frais") ||
-					strings.Contains(titleLower, "gebühren") ||
-					strings.Contains(titleLower, "fee") {
-					// Extract numeric value from detail text
-					// Format is usually like "1,00 €" or "1.00 EUR"
-					text := item.Detail.Text
-					// Remove currency symbols and convert comma to dot
-					text = strings.ReplaceAll(text, "€", "")
-					text = strings.ReplaceAll(text, "EUR", "")
-					text = strings.ReplaceAll(text, ",", ".")
-					text = strings.TrimSpace(text)
-					return text
+			// Parse data as array of items
+			if dataArray, ok := section.Data.([]interface{}); ok {
+				for _, item := range dataArray {
+					if itemMap, ok := item.(map[string]interface{}); ok {
+						title, _ := itemMap["title"].(string)
+						titleLower := strings.ToLower(title)
+						// Check for fees in multiple languages
+						if strings.Contains(titleLower, "gebühr") ||
+							strings.Contains(titleLower, "fee") ||
+							strings.Contains(titleLower, "frais") {
+							// Extract numeric value from detail text
+							if detail, ok := itemMap["detail"].(map[string]interface{}); ok {
+								if text, ok := detail["text"].(string); ok {
+									// Remove currency symbols and convert comma to dot
+									text = strings.ReplaceAll(text, "€", "")
+									text = strings.ReplaceAll(text, "EUR", "")
+									text = strings.ReplaceAll(text, " ", "")
+									text = strings.ReplaceAll(text, ",", ".")
+									text = strings.TrimSpace(text)
+									log.Printf("DEBUG ExtractFees: Found fees: %s", text)
+									return text
+								}
+							}
+						}
+					}
 				}
 			}
 		}
 	}
 
 	return "0"
+}
+
+// ExtractSharesAndPriceFromDetail extracts shares quantity and share price from transaction detail V2
+func ExtractSharesAndPriceFromDetail(detail *TimelineDetail) (shares float64, sharePrice float64, err error) {
+	if detail == nil {
+		return 0, 0, fmt.Errorf("detail is nil")
+	}
+
+	log.Printf("DEBUG ExtractSharesAndPrice: Processing detail with %d sections", len(detail.Sections))
+
+	// Look for "Transaktion" or "Synthèse" section
+	for i, section := range detail.Sections {
+		log.Printf("DEBUG ExtractSharesAndPrice: Section %d - Type: %s, Title: %s", i, section.Type, section.Title)
+
+		if section.Type == "table" {
+			// Parse data as array of items
+			if dataArray, ok := section.Data.([]interface{}); ok {
+				log.Printf("DEBUG ExtractSharesAndPrice: Section %d has %d items", i, len(dataArray))
+
+				var sharesStr, priceStr string
+
+				for j, item := range dataArray {
+					if itemMap, ok := item.(map[string]interface{}); ok {
+						title, _ := itemMap["title"].(string)
+						log.Printf("DEBUG ExtractSharesAndPrice: Section %d, Item %d - Title: %s", i, j, title)
+
+						// NEW FORMAT: Check if this item is "Transaction" with embedded sections
+						if title == "Transaction" {
+							if detailMap, ok := itemMap["detail"].(map[string]interface{}); ok {
+								if action, ok := detailMap["action"].(map[string]interface{}); ok {
+									if payload, ok := action["payload"].(map[string]interface{}); ok {
+										if embeddedSections, ok := payload["sections"].([]interface{}); ok {
+											log.Printf("DEBUG ExtractSharesAndPrice: Found embedded sections in Transaction item (new format)")
+											// Parse embedded sections
+											sharesStr, priceStr = extractFromEmbeddedSections(embeddedSections)
+											if sharesStr != "" && priceStr != "" {
+												goto parseValues
+											}
+										}
+									}
+								}
+							}
+						}
+
+						// OLD FORMAT: Look for "Anteile" or "Aktien" or "Titres" or "Actions"
+						if title == "Anteile" || title == "Aktien" || title == "Titres" || title == "Actions" {
+							if detail, ok := itemMap["detail"].(map[string]interface{}); ok {
+								if text, ok := detail["text"].(string); ok {
+									sharesStr = text
+									log.Printf("DEBUG ExtractSharesAndPrice: Found shares (old format): %s", sharesStr)
+								}
+							}
+						}
+
+						// OLD FORMAT: Look for "Aktienkurs" or "Kurs" or "Cours du titre" or "Prix du titre"
+						if title == "Aktienkurs" || title == "Kurs" || title == "Cours du titre" || title == "Prix du titre" {
+							if detail, ok := itemMap["detail"].(map[string]interface{}); ok {
+								if text, ok := detail["text"].(string); ok {
+									priceStr = text
+									log.Printf("DEBUG ExtractSharesAndPrice: Found price (old format): %s", priceStr)
+								}
+							}
+						}
+					}
+				}
+
+			parseValues:
+				// Parse shares
+				if sharesStr != "" {
+					sharesStr = strings.ReplaceAll(sharesStr, ",", ".")
+					sharesStr = strings.ReplaceAll(sharesStr, " ", "")
+					sharesStr = strings.TrimSpace(sharesStr)
+					if s, err := strconv.ParseFloat(sharesStr, 64); err == nil {
+						shares = s
+					} else {
+						log.Printf("DEBUG ExtractSharesAndPrice: Failed to parse shares '%s': %v", sharesStr, err)
+					}
+				}
+
+				// Parse share price
+				if priceStr != "" {
+					priceStr = strings.ReplaceAll(priceStr, "€", "")
+					priceStr = strings.ReplaceAll(priceStr, "EUR", "")
+					priceStr = strings.ReplaceAll(priceStr, " ", "")
+					priceStr = strings.ReplaceAll(priceStr, ",", ".")
+					priceStr = strings.TrimSpace(priceStr)
+					if p, err := strconv.ParseFloat(priceStr, 64); err == nil {
+						sharePrice = p
+					} else {
+						log.Printf("DEBUG ExtractSharesAndPrice: Failed to parse price '%s': %v", priceStr, err)
+					}
+				}
+
+				if shares > 0 && sharePrice > 0 {
+					log.Printf("DEBUG ExtractSharesAndPrice: Successfully extracted shares=%.2f, price=%.2f", shares, sharePrice)
+					return shares, sharePrice, nil
+				}
+			}
+		}
+	}
+
+	log.Printf("DEBUG ExtractSharesAndPrice: Failed to extract shares and price")
+	return 0, 0, fmt.Errorf("could not extract shares and price from detail")
+}
+
+// extractFromEmbeddedSections extracts shares and price from embedded sections (new format)
+func extractFromEmbeddedSections(sections []interface{}) (sharesStr, priceStr string) {
+	for _, sec := range sections {
+		if secMap, ok := sec.(map[string]interface{}); ok {
+			secType, _ := secMap["type"].(string)
+			if secType == "table" {
+				if data, ok := secMap["data"].([]interface{}); ok {
+					for _, item := range data {
+						if itemMap, ok := item.(map[string]interface{}); ok {
+							title, _ := itemMap["title"].(string)
+							log.Printf("DEBUG extractFromEmbeddedSections: Item title: %s", title)
+
+							// Look for "Actions" (French) or "Anteile" (German) or "Aktien"
+							if title == "Actions" || title == "Anteile" || title == "Aktien" {
+								if detail, ok := itemMap["detail"].(map[string]interface{}); ok {
+									if text, ok := detail["text"].(string); ok {
+										sharesStr = text
+										log.Printf("DEBUG extractFromEmbeddedSections: Found shares: %s", sharesStr)
+									}
+								}
+							}
+
+							// Look for "Prix du titre" (French) or "Aktienkurs" (German) or "Kurs"
+							if title == "Prix du titre" || title == "Aktienkurs" || title == "Kurs" {
+								if detail, ok := itemMap["detail"].(map[string]interface{}); ok {
+									if text, ok := detail["text"].(string); ok {
+										priceStr = text
+										log.Printf("DEBUG extractFromEmbeddedSections: Found price: %s", priceStr)
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	return sharesStr, priceStr
 }

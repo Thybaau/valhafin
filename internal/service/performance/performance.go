@@ -283,7 +283,7 @@ func (s *PerformanceService) calculatePerformance(transactions []models.Transact
 
 	return &Performance{
 		TotalValue:      totalValue,
-		TotalInvested:   currentInvested, // Amount currently invested (not total buys)
+		TotalInvested:   totalInvested - totalSales, // Total buys - total sells
 		CashBalance:     cashBalance,
 		TotalFees:       totalFees,
 		RealizedGains:   totalSales + totalInterests - totalFees, // Realized gains from sales + interests - fees

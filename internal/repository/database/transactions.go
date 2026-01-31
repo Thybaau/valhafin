@@ -61,7 +61,11 @@ func (db *DB) CreateTransaction(transaction *models.Transaction, platform string
 			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
 			$17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28
 		)
-		ON CONFLICT (id) DO NOTHING
+		ON CONFLICT (id) DO UPDATE SET
+			shares = EXCLUDED.shares,
+			share_price = EXCLUDED.share_price,
+			quantity = EXCLUDED.quantity,
+			fees = EXCLUDED.fees
 	`, tableName)
 
 	_, err := db.Exec(
@@ -149,7 +153,11 @@ func (db *DB) CreateTransactionsBatch(transactions []models.Transaction, platfor
 			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
 			$17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28
 		)
-		ON CONFLICT (id) DO NOTHING
+		ON CONFLICT (id) DO UPDATE SET
+			shares = EXCLUDED.shares,
+			share_price = EXCLUDED.share_price,
+			quantity = EXCLUDED.quantity,
+			fees = EXCLUDED.fees
 	`, tableName)
 
 	stmt, err := tx.Prepare(query)
