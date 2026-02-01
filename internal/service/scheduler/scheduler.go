@@ -111,8 +111,8 @@ func (s *Scheduler) runTask(task Task) {
 
 // addDefaultTasks adds the default scheduled tasks
 func (s *Scheduler) addDefaultTasks() {
-	// Task 1: Update asset prices every hour
-	s.AddTask("update_prices", 1*time.Hour, func() error {
+	// Task 1: Update asset prices once per day
+	s.AddTask("update_prices", 24*time.Hour, func() error {
 		log.Println("💰 Updating asset prices...")
 		if err := s.priceService.UpdateAllPrices(); err != nil {
 			log.Printf("❌ Failed to update prices: %v", err)
