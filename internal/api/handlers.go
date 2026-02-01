@@ -1385,3 +1385,179 @@ func (h *Handler) GetAssetPriceHistoryHandler(w http.ResponseWriter, r *http.Req
 
 	respondJSON(w, http.StatusOK, prices)
 }
+
+// UpdateSingleAssetPrice forces an update of a single asset price
+func (h *Handler) UpdateSingleAssetPrice(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	isin := vars["isin"]
+
+	if isin == "" {
+		respondError(w, http.StatusBadRequest, "MISSING_ISIN", "ISIN is required", nil)
+		return
+	}
+
+	log.Printf("Updating price for asset %s...", isin)
+
+	// Update price for this asset
+	if err := h.PriceService.UpdateAssetPrice(isin); err != nil {
+		respondError(w, http.StatusInternalServerError, "UPDATE_ERROR", "Failed to update price", map[string]string{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	// Get the updated price
+	price, err := h.DB.GetLatestAssetPrice(isin)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "DATABASE_ERROR", "Failed to retrieve updated price", map[string]string{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"message": "Price updated successfully",
+		"price":   price,
+	})
+}
+
+// AssetPosition represents a user's position in an asset
+type AssetPosition struct {
+	ISIN              string     `json:"isin"`
+	Name              string     `json:"name"`
+	Quantity          float64    `json:"quantity"`
+	AverageBuyPrice   float64    `json:"average_buy_price"`
+	CurrentPrice      float64    `json:"current_price"`
+	CurrentValue      float64    `json:"current_value"`
+	TotalInvested     float64    `json:"total_invested"`
+	UnrealizedGain    float64    `json:"unrealized_gain"`
+	UnrealizedGainPct float64    `json:"unrealized_gain_pct"`
+	Currency          string     `json:"currency"`
+	Purchases         []Purchase `json:"purchases"`
+}
+
+// Purchase represents a buy transaction
+type Purchase struct {
+	Date     string  `json:"date"`
+	Quantity float64 `json:"quantity"`
+	Price    float64 `json:"price"`
+}
+
+// GetAssetsHandler returns all assets with user positions
+func (h *Handler) GetAssetsHandler(w http.ResponseWriter, r *http.Request) {
+	// Get all accounts
+	accounts, err := h.DB.GetAllAccounts()
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "DATABASE_ERROR", "Failed to get accounts", map[string]string{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	// Map to store positions by ISIN
+	positionsByISIN := make(map[string]*AssetPosition)
+
+	// Collect all transactions from all accounts
+	for _, account := range accounts {
+		filter := database.TransactionFilter{}
+		transactions, err := h.DB.GetTransactionsByAccount(account.ID, account.Platform, filter)
+		if err != nil {
+			log.Printf("Warning: failed to get transactions for account %s: %v", account.ID, err)
+			continue
+		}
+
+		// Process transactions
+		for _, tx := range transactions {
+			if tx.ISIN == nil || *tx.ISIN == "" {
+				continue
+			}
+
+			isin := *tx.ISIN
+
+			// Initialize position if not exists
+			if _, exists := positionsByISIN[isin]; !exists {
+				// Get asset info
+				asset, err := h.DB.GetAssetByISIN(isin)
+				assetName := "Unknown"
+				currency := "EUR"
+				if err == nil {
+					assetName = asset.Name
+					currency = asset.Currency
+				}
+
+				positionsByISIN[isin] = &AssetPosition{
+					ISIN:      isin,
+					Name:      assetName,
+					Currency:  currency,
+					Purchases: []Purchase{},
+				}
+			}
+
+			position := positionsByISIN[isin]
+
+			// Process based on transaction type
+			switch tx.TransactionType {
+			case "buy":
+				position.Quantity += tx.Quantity
+				investedAmount := -tx.AmountValue // AmountValue is negative for buys
+				position.TotalInvested += investedAmount
+
+				// Add to purchases list
+				position.Purchases = append(position.Purchases, Purchase{
+					Date:     tx.Timestamp[:10], // Extract date part
+					Quantity: tx.Quantity,
+					Price:    investedAmount / tx.Quantity,
+				})
+
+			case "sell":
+				position.Quantity -= tx.Quantity
+				// Reduce invested amount proportionally
+				if position.Quantity > 0 {
+					avgCost := position.TotalInvested / (position.Quantity + tx.Quantity)
+					position.TotalInvested -= avgCost * tx.Quantity
+				} else {
+					position.TotalInvested = 0
+				}
+			}
+		}
+	}
+
+	// Calculate current values and get current prices
+	var assets []AssetPosition
+	for _, position := range positionsByISIN {
+		if position.Quantity <= 0 {
+			continue // Skip sold positions
+		}
+
+		// Calculate average buy price
+		if position.Quantity > 0 {
+			position.AverageBuyPrice = position.TotalInvested / position.Quantity
+		}
+
+		// Get current price
+		currentPrice, err := h.PriceService.GetCurrentPrice(position.ISIN)
+		if err != nil {
+			log.Printf("Warning: failed to get current price for %s: %v", position.ISIN, err)
+			// Use average buy price as fallback
+			position.CurrentPrice = position.AverageBuyPrice
+		} else {
+			position.CurrentPrice = currentPrice.Price
+		}
+
+		// Calculate current value and gains
+		position.CurrentValue = position.Quantity * position.CurrentPrice
+		position.UnrealizedGain = position.CurrentValue - position.TotalInvested
+		if position.TotalInvested > 0 {
+			position.UnrealizedGainPct = (position.UnrealizedGain / position.TotalInvested) * 100
+		}
+
+		assets = append(assets, *position)
+	}
+
+	// Sort by current value (descending)
+	sort.Slice(assets, func(i, j int) bool {
+		return assets[i].CurrentValue > assets[j].CurrentValue
+	})
+
+	respondJSON(w, http.StatusOK, assets)
+}

@@ -6,6 +6,7 @@ import Accounts from './pages/Accounts'
 import Transactions from './pages/Transactions'
 import Performance from './pages/Performance'
 import Fees from './pages/Fees'
+import Assets from './pages/Assets'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -27,6 +28,7 @@ function App() {
             <Route path="transactions" element={<Transactions />} />
             <Route path="performance" element={<Performance />} />
             <Route path="fees" element={<Fees />} />
+            <Route path="assets" element={<Assets />} />
           </Route>
         </Routes>
       </BrowserRouter>

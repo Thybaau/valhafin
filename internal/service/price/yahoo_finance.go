@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"sync"
@@ -14,10 +15,11 @@ import (
 
 // YahooFinanceService implements the Service interface using Yahoo Finance API
 type YahooFinanceService struct {
-	db         *database.DB
-	httpClient *http.Client
-	cache      *PriceCache
-	isinMapper *ISINMapper
+	db                *database.DB
+	httpClient        *http.Client
+	cache             *PriceCache
+	isinMapper        *ISINMapper
+	currencyConverter *CurrencyConverter
 }
 
 // PriceCache provides in-memory caching for prices
@@ -53,19 +55,24 @@ func NewYahooFinanceService(db *database.DB) *YahooFinanceService {
 		isinMapper: &ISINMapper{
 			mapping: make(map[string]string),
 		},
+		currencyConverter: NewCurrencyConverter(),
 	}
 }
 
 // GetCurrentPrice retrieves the current price for an asset by ISIN
 func (s *YahooFinanceService) GetCurrentPrice(isin string) (*models.AssetPrice, error) {
+	log.Printf("DEBUG: GetCurrentPrice for ISIN %s", isin)
+
 	// Check cache first
 	if cachedPrice := s.cache.Get(isin); cachedPrice != nil {
+		log.Printf("DEBUG: Returning cached price for %s", isin)
 		return cachedPrice, nil
 	}
 
 	// Get asset from database to retrieve symbol
 	asset, err := s.db.GetAssetByISIN(isin)
 	if err != nil {
+		log.Printf("DEBUG: Asset not found in DB for %s, will use ISIN conversion", isin)
 		// If asset not found, try to fetch price anyway using ISIN conversion
 		return s.fetchAndStorePrice(isin, "")
 	}
@@ -75,10 +82,12 @@ func (s *YahooFinanceService) GetCurrentPrice(isin string) (*models.AssetPrice, 
 	if asset.Symbol != nil {
 		symbol = *asset.Symbol
 	}
+	log.Printf("DEBUG: Asset found for %s, symbol: %s, currency: %s", isin, symbol, asset.Currency)
 
 	// Fetch price from Yahoo Finance
 	price, err := s.fetchAndStorePrice(isin, symbol)
 	if err != nil {
+		log.Printf("DEBUG: Failed to fetch price for %s: %v", isin, err)
 		// Fallback: try to get last known price from database
 		lastPrice, dbErr := s.db.GetLatestAssetPrice(isin)
 		if dbErr == nil {
@@ -171,6 +180,13 @@ func (s *YahooFinanceService) UpdateAssetPrice(isin string) error {
 
 // fetchAndStorePrice fetches the current price from Yahoo Finance and stores it
 func (s *YahooFinanceService) fetchAndStorePrice(isin, symbol string) (*models.AssetPrice, error) {
+	// Get asset to check expected currency
+	asset, err := s.db.GetAssetByISIN(isin)
+	expectedCurrency := "EUR" // Default to EUR
+	if err == nil {
+		expectedCurrency = asset.Currency
+	}
+
 	// Convert ISIN to Yahoo symbol if not provided
 	if symbol == "" {
 		symbol = s.isinMapper.GetSymbol(isin, "")
@@ -183,6 +199,19 @@ func (s *YahooFinanceService) fetchAndStorePrice(isin, symbol string) (*models.A
 	price, currency, err := s.fetchPriceFromYahoo(symbol)
 	if err != nil {
 		return nil, err
+	}
+
+	// Convert currency if needed
+	if currency != expectedCurrency {
+		convertedPrice, err := s.currencyConverter.Convert(price, currency, expectedCurrency)
+		if err != nil {
+			log.Printf("Warning: failed to convert %s to %s for ISIN %s: %v", currency, expectedCurrency, isin, err)
+			// Continue with original price and currency
+		} else {
+			log.Printf("Converted price for %s: %.2f %s -> %.2f %s", isin, price, currency, convertedPrice, expectedCurrency)
+			price = convertedPrice
+			currency = expectedCurrency
+		}
 	}
 
 	// Create asset price model

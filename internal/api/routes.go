@@ -94,8 +94,10 @@ func SetupRoutesWithVersion(db *database.DB, encryptionService *encryption.Encry
 	api.HandleFunc("/fees", handler.GetGlobalFeesHandler).Methods("GET")
 
 	// Asset routes
+	api.HandleFunc("/assets", handler.GetAssetsHandler).Methods("GET")
 	api.HandleFunc("/assets/{isin}/price", handler.GetAssetPriceHandler).Methods("GET")
 	api.HandleFunc("/assets/{isin}/history", handler.GetAssetPriceHistoryHandler).Methods("GET")
+	api.HandleFunc("/assets/{isin}/price/update", handler.UpdateSingleAssetPrice).Methods("POST")
 
 	// Return router and services
 	services := &Services{
