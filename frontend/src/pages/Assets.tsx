@@ -49,7 +49,7 @@ export default function Assets() {
   const [selectedAsset, setSelectedAsset] = useState<AssetPosition | null>(null);
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [assetToSearch, setAssetToSearch] = useState<AssetPosition | null>(null);
-  const [timeRange, setTimeRange] = useState<'1W' | '1M' | '6M' | '1Y'>('1Y');
+  const [timeRange, setTimeRange] = useState<'1W' | '1M' | '6M' | '1Y' | '2Y' | '5Y' | 'MAX'>('1Y');
 
   const { data: assets, isLoading, error, refetch } = useQuery<AssetPosition[]>({
     queryKey: ['assets'],
@@ -84,6 +84,15 @@ export default function Assets() {
           break;
         case '1Y':
           startDate.setFullYear(startDate.getFullYear() - 1);
+          break;
+        case '2Y':
+          startDate.setFullYear(startDate.getFullYear() - 2);
+          break;
+        case '5Y':
+          startDate.setFullYear(startDate.getFullYear() - 5);
+          break;
+        case 'MAX':
+          startDate.setFullYear(startDate.getFullYear() - 20); // 20 years max
           break;
       }
       
@@ -227,7 +236,7 @@ export default function Assets() {
 
             {/* Time Range Selector */}
             <div className="mb-4 flex gap-2">
-              {(['1W', '1M', '6M', '1Y'] as const).map((range) => (
+              {(['1W', '1M', '6M', '1Y', '2Y', '5Y', 'MAX'] as const).map((range) => (
                 <button
                   key={range}
                   onClick={() => setTimeRange(range)}
