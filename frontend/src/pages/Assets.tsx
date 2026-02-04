@@ -172,18 +172,71 @@ export default function Assets() {
   const periodGain = chartData.length > 0 && selectedAsset ? (() => {
     const firstPrice = chartData[0].price;
     const lastPrice = chartData[chartData.length - 1].price;
-    const quantity = selectedAsset.quantity;
+    const currentQuantity = selectedAsset.quantity;
     
-    const firstValue = firstPrice * quantity;
-    const lastValue = lastPrice * quantity;
-    const gain = lastValue - firstValue;
-    const gainPct = (gain / firstValue) * 100;
+    // Calculate the start date of the period
+    const periodStartDate = new Date(chartData[0].timestamp);
+    
+    // Get the date of the first purchase
+    const firstPurchaseDate = selectedAsset.purchases.length > 0
+      ? new Date(Math.min(...selectedAsset.purchases.map(p => new Date(p.date).getTime())))
+      : new Date();
+    
+    // If the period starts before or at the first purchase, use total gain/loss
+    if (periodStartDate <= firstPurchaseDate) {
+      return {
+        gain: selectedAsset.unrealized_gain,
+        gainPct: selectedAsset.unrealized_gain_pct,
+        firstPrice,
+        lastPrice,
+        valueAtStart: selectedAsset.total_invested,
+        valueNow: selectedAsset.current_value,
+        netInvestments: selectedAsset.total_invested,
+        quantityAtStart: 0,
+        isTotal: true,
+      };
+    }
+    
+    // Filter purchases that happened during the period
+    const purchasesDuringPeriod = selectedAsset.purchases.filter(purchase => {
+      const purchaseDate = new Date(purchase.date);
+      return purchaseDate >= periodStartDate;
+    });
+    
+    // Calculate total quantity bought during the period
+    const quantityBoughtDuringPeriod = purchasesDuringPeriod.reduce(
+      (sum, purchase) => sum + purchase.quantity,
+      0
+    );
+    
+    // Calculate quantity owned at the start of the period
+    const quantityAtStart = currentQuantity - quantityBoughtDuringPeriod;
+    
+    // Calculate net investments during the period (money spent on purchases)
+    const netInvestments = purchasesDuringPeriod.reduce(
+      (sum, purchase) => sum + (purchase.quantity * purchase.price),
+      0
+    );
+    
+    // Calculate values
+    const valueAtStart = quantityAtStart * firstPrice;
+    const valueNow = currentQuantity * lastPrice;
+    
+    // Gain = Current value - Initial value - Net investments during period
+    const gain = valueNow - valueAtStart - netInvestments;
+    const totalInvested = valueAtStart + netInvestments;
+    const gainPct = totalInvested > 0 ? (gain / totalInvested) * 100 : 0;
     
     return {
       gain,
       gainPct,
       firstPrice,
       lastPrice,
+      valueAtStart,
+      valueNow,
+      netInvestments,
+      quantityAtStart,
+      isTotal: false,
     };
   })() : null;
 
