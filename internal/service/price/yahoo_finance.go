@@ -7,10 +7,52 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 	"valhafin/internal/domain/models"
 	"valhafin/internal/repository/database"
 )
+
+// PriceCache provides in-memory caching for asset prices
+type PriceCache struct {
+	prices map[string]*CachedPrice
+	ttl    time.Duration
+	mu     sync.RWMutex
+}
+
+// CachedPrice represents a cached price with expiration
+type CachedPrice struct {
+	Price     *models.AssetPrice
+	ExpiresAt time.Time
+}
+
+// Get retrieves a cached price if it exists and hasn't expired
+func (c *PriceCache) Get(isin string) *models.AssetPrice {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	cached, exists := c.prices[isin]
+	if !exists {
+		return nil
+	}
+
+	if time.Now().After(cached.ExpiresAt) {
+		return nil
+	}
+
+	return cached.Price
+}
+
+// Set stores a price in the cache
+func (c *PriceCache) Set(isin string, price *models.AssetPrice) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.prices[isin] = &CachedPrice{
+		Price:     price,
+		ExpiresAt: time.Now().Add(c.ttl),
+	}
+}
 
 // YahooFinanceService implements the Service interface using Yahoo Finance API
 type YahooFinanceService struct {

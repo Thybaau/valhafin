@@ -29,9 +29,8 @@ type DatabaseConfig struct {
 }
 
 type ServerConfig struct {
-	Port               string `mapstructure:"port"`
-	EncryptionKey      string `mapstructure:"encryption_key"`
-	AlphaVantageAPIKey string `mapstructure:"alpha_vantage_api_key"`
+	Port          string `mapstructure:"port"`
+	EncryptionKey string `mapstructure:"encryption_key"`
 }
 
 func Load() (*Config, error) {
@@ -48,7 +47,6 @@ func Load() (*Config, error) {
 	viper.BindEnv("database.url", "DATABASE_URL")
 	viper.BindEnv("server.port", "PORT")
 	viper.BindEnv("server.encryption_key", "ENCRYPTION_KEY")
-	viper.BindEnv("server.alpha_vantage_api_key", "ALPHA_VANTAGE_API_KEY")
 
 	// Set defaults
 	viper.SetDefault("server.port", "8080")
@@ -70,9 +68,6 @@ func Load() (*Config, error) {
 	}
 	if encKey := os.Getenv("ENCRYPTION_KEY"); encKey != "" {
 		config.Server.EncryptionKey = encKey
-	}
-	if apiKey := os.Getenv("ALPHA_VANTAGE_API_KEY"); apiKey != "" {
-		config.Server.AlphaVantageAPIKey = apiKey
 	}
 
 	return &config, nil
