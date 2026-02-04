@@ -431,3 +431,59 @@ func extractFromEmbeddedSections(sections []interface{}) (sharesStr, priceStr st
 	}
 	return sharesStr, priceStr
 }
+
+// FetchInstrumentDetails fetches detailed information for a specific instrument (asset)
+func (c *WebSocketClient) FetchInstrumentDetails(isin string) (map[string]interface{}, error) {
+	c.messageID++
+
+	// Build payload for instrument details
+	payload := map[string]interface{}{
+		"type":  "instrument",
+		"id":    isin,
+		"token": c.sessionToken,
+	}
+
+	payloadJSON, _ := json.Marshal(payload)
+	subMsg := fmt.Sprintf("sub %d %s", c.messageID, string(payloadJSON))
+
+	// Send subscription
+	if err := c.conn.WriteMessage(websocket.TextMessage, []byte(subMsg)); err != nil {
+		return nil, fmt.Errorf("failed to send subscription: %w", err)
+	}
+
+	// Read response
+	_, message, err := c.conn.ReadMessage()
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+
+	// Send unsubscribe
+	unsubMsg := fmt.Sprintf("unsub %d", c.messageID)
+	if err := c.conn.WriteMessage(websocket.TextMessage, []byte(unsubMsg)); err != nil {
+		return nil, fmt.Errorf("failed to send unsubscribe: %w", err)
+	}
+
+	// Read unsubscribe response
+	_, _, err = c.conn.ReadMessage()
+	if err != nil {
+		return nil, fmt.Errorf("failed to read unsubscribe response: %w", err)
+	}
+
+	// Parse response - extract JSON from message
+	messageStr := string(message)
+	startIndex := strings.Index(messageStr, "{")
+	endIndex := strings.LastIndex(messageStr, "}")
+
+	if startIndex == -1 || endIndex == -1 {
+		return nil, fmt.Errorf("no JSON found in message")
+	}
+
+	jsonStr := messageStr[startIndex : endIndex+1]
+
+	var details map[string]interface{}
+	if err := json.Unmarshal([]byte(jsonStr), &details); err != nil {
+		return nil, fmt.Errorf("failed to parse instrument details: %w", err)
+	}
+
+	return details, nil
+}
