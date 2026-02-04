@@ -26,6 +26,11 @@ import (
 	"github.com/leanovate/gopter/prop"
 )
 
+// Helper function to create string pointers
+func stringPtr(s string) *string {
+	return &s
+}
+
 // setupTestHandlerForCSV creates a test handler with dependencies for CSV tests
 func setupTestHandlerForCSV(t *testing.T) (*Handler, *database.DB) {
 	cfg := database.Config{
@@ -151,10 +156,14 @@ func generateCSVContent(transactions []models.Transaction, includeHeader bool) s
 	}
 
 	for _, t := range transactions {
+		isin := ""
+		if t.ISIN != nil {
+			isin = *t.ISIN
+		}
 		row := []string{
 			t.ID,
 			t.Timestamp,
-			t.ISIN,
+			isin,
 			fmt.Sprintf("%.2f", t.AmountValue),
 			t.Fees,
 			t.Title,
@@ -254,7 +263,7 @@ func TestProperty20_CSVParsingAndValidation(t *testing.T) {
 			asset := &models.Asset{
 				ISIN:     "US0378331005",
 				Name:     "Apple Inc.",
-				Symbol:   "AAPL",
+				Symbol:   stringPtr("AAPL"),
 				Type:     "stock",
 				Currency: "USD",
 			}
@@ -349,7 +358,7 @@ func TestProperty21_CSVImportWithDeduplication(t *testing.T) {
 		return models.Transaction{
 			ID:              id,
 			Timestamp:       time.Now().Format(time.RFC3339),
-			ISIN:            "US0378331005",
+			ISIN:            stringPtr("US0378331005"),
 			AmountValue:     100.50,
 			Fees:            "1.50",
 			AmountCurrency:  "EUR",
@@ -376,7 +385,7 @@ func TestProperty21_CSVImportWithDeduplication(t *testing.T) {
 			asset := &models.Asset{
 				ISIN:     "US0378331005",
 				Name:     "Apple Inc.",
-				Symbol:   "AAPL",
+				Symbol:   stringPtr("AAPL"),
 				Type:     "stock",
 				Currency: "USD",
 			}
@@ -464,7 +473,7 @@ func TestProperty21_CSVImportWithDeduplication(t *testing.T) {
 			asset := &models.Asset{
 				ISIN:     "US0378331005",
 				Name:     "Apple Inc.",
-				Symbol:   "AAPL",
+				Symbol:   stringPtr("AAPL"),
 				Type:     "stock",
 				Currency: "USD",
 			}

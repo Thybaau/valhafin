@@ -426,8 +426,8 @@ func enrichTransactionWithDetails(tx *models.Transaction, wsClient *WebSocketCli
 	shares, sharePrice, err := ExtractSharesAndPriceFromDetail(detail)
 	if err != nil {
 		// Not all transactions have shares/price (e.g., some corporate actions)
-		// This is not necessarily an error
-		fmt.Printf("Info: Could not extract shares/price for transaction %s: %v\n", tx.ID, err)
+		// This is not necessarily an error, so we just log it at debug level
+		// Silently skip - this is expected for some transaction types
 	} else {
 		// Store shares and share_price as strings for now (model uses string fields)
 		tx.Shares = fmt.Sprintf("%.2f", shares)

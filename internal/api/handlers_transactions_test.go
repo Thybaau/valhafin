@@ -60,7 +60,7 @@ func (m *MockTransactionDB) GetTransactionsByAccountWithSort(accountID string, p
 		if filter.EndDate != "" && tx.Timestamp > filter.EndDate {
 			continue
 		}
-		if filter.ISIN != "" && tx.ISIN != filter.ISIN {
+		if filter.ISIN != "" && (tx.ISIN == nil || *tx.ISIN != filter.ISIN) {
 			continue
 		}
 		if filter.TransactionType != "" && tx.TransactionType != filter.TransactionType {
@@ -130,7 +130,7 @@ func (m *MockTransactionDB) GetAllTransactionsWithSort(platform string, filter d
 		if filter.EndDate != "" && tx.Timestamp > filter.EndDate {
 			continue
 		}
-		if filter.ISIN != "" && tx.ISIN != filter.ISIN {
+		if filter.ISIN != "" && (tx.ISIN == nil || *tx.ISIN != filter.ISIN) {
 			continue
 		}
 		if filter.TransactionType != "" && tx.TransactionType != filter.TransactionType {
@@ -155,7 +155,7 @@ func (m *MockTransactionDB) CountTransactions(platform string, filter database.T
 			if filter.EndDate != "" && tx.Timestamp > filter.EndDate {
 				continue
 			}
-			if filter.ISIN != "" && tx.ISIN != filter.ISIN {
+			if filter.ISIN != "" && (tx.ISIN == nil || *tx.ISIN != filter.ISIN) {
 				continue
 			}
 			if filter.TransactionType != "" && tx.TransactionType != filter.TransactionType {
@@ -196,7 +196,7 @@ func TestProperty_TransactionFiltering(t *testing.T) {
 					ID:              fmt.Sprintf("tx-%d", i),
 					AccountID:       accountID,
 					Timestamp:       timestamp,
-					ISIN:            fmt.Sprintf("ISIN%d", i%3),
+					ISIN:            stringPtr(fmt.Sprintf("ISIN%d", i%3)),
 					TransactionType: []string{"buy", "sell", "dividend"}[i%3],
 					AmountValue:     float64(100 + i),
 					AmountCurrency:  "EUR",
@@ -214,7 +214,7 @@ func TestProperty_TransactionFiltering(t *testing.T) {
 			case "isin":
 				filter.ISIN = filterValue
 				expectedMatch = func(tx models.Transaction) bool {
-					return tx.ISIN == filterValue
+					return tx.ISIN != nil && *tx.ISIN == filterValue
 				}
 			case "type":
 				filter.TransactionType = filterValue
@@ -449,7 +449,7 @@ func TestGetAccountTransactionsHandler_Integration(t *testing.T) {
 			ID:              "tx-1",
 			AccountID:       accountID,
 			Timestamp:       "2024-01-01T10:00:00Z",
-			ISIN:            "US0378331005",
+			ISIN:            stringPtr("US0378331005"),
 			TransactionType: "buy",
 			AmountValue:     100.0,
 			AmountCurrency:  "EUR",
@@ -458,7 +458,7 @@ func TestGetAccountTransactionsHandler_Integration(t *testing.T) {
 			ID:              "tx-2",
 			AccountID:       accountID,
 			Timestamp:       "2024-01-02T10:00:00Z",
-			ISIN:            "US0378331005",
+			ISIN:            stringPtr("US0378331005"),
 			TransactionType: "sell",
 			AmountValue:     150.0,
 			AmountCurrency:  "EUR",

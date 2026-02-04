@@ -5,6 +5,11 @@ import (
 	"time"
 )
 
+// Helper function to create string pointers
+func stringPtr(s string) *string {
+	return &s
+}
+
 func TestAccountValidation(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -68,7 +73,7 @@ func TestAssetValidation(t *testing.T) {
 			asset: Asset{
 				ISIN:     "US0378331005",
 				Name:     "Apple Inc.",
-				Symbol:   "AAPL",
+				Symbol:   stringPtr("AAPL"),
 				Type:     "stock",
 				Currency: "USD",
 			},
@@ -79,7 +84,7 @@ func TestAssetValidation(t *testing.T) {
 			asset: Asset{
 				ISIN:     "INVALID",
 				Name:     "Apple Inc.",
-				Symbol:   "AAPL",
+				Symbol:   stringPtr("AAPL"),
 				Type:     "stock",
 				Currency: "USD",
 			},
@@ -90,7 +95,7 @@ func TestAssetValidation(t *testing.T) {
 			asset: Asset{
 				ISIN:     "US0378331005",
 				Name:     "Apple Inc.",
-				Symbol:   "AAPL",
+				Symbol:   stringPtr("AAPL"),
 				Type:     "invalid_type",
 				Currency: "USD",
 			},
@@ -101,7 +106,7 @@ func TestAssetValidation(t *testing.T) {
 			asset: Asset{
 				ISIN:     "US0378331005",
 				Name:     "Apple Inc.",
-				Symbol:   "AAPL",
+				Symbol:   stringPtr("AAPL"),
 				Type:     "stock",
 				Currency: "us",
 			},

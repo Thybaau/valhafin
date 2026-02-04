@@ -10,6 +10,11 @@ import (
 	"github.com/leanovate/gopter/prop"
 )
 
+// Helper function to create string pointers
+func stringPtr(s string) *string {
+	return &s
+}
+
 // MockPriceService is a mock implementation of price.Service for testing
 type MockPriceService struct {
 	prices map[string]float64
@@ -144,7 +149,7 @@ func TestProperty_PerformanceCalculationWithCurrentPrices(t *testing.T) {
 				{
 					ID:              "tx1",
 					AccountID:       "acc1",
-					ISIN:            isin,
+					ISIN:            stringPtr(isin),
 					Quantity:        quantity,
 					AmountValue:     quantity * buyPrice,
 					TransactionType: "buy",
@@ -213,7 +218,7 @@ func TestProperty_PerformanceCalculationWithCurrentPrices(t *testing.T) {
 				{
 					ID:              "tx1",
 					AccountID:       "acc1",
-					ISIN:            isin,
+					ISIN:            stringPtr(isin),
 					Quantity:        quantity,
 					AmountValue:     quantity * price,
 					TransactionType: "buy",
@@ -292,7 +297,7 @@ func TestProperty_GlobalPerformanceAggregation(t *testing.T) {
 				allTransactions = append(allTransactions, models.Transaction{
 					ID:              formatTxID(i),
 					AccountID:       formatAccountID(i % 3), // Distribute across 3 accounts
-					ISIN:            isin,
+					ISIN:            stringPtr(isin),
 					Quantity:        quantity,
 					AmountValue:     quantity * buyPrice,
 					TransactionType: "buy",
@@ -368,7 +373,7 @@ func TestProperty_CurrentValueCalculation(t *testing.T) {
 				{
 					ID:              "tx1",
 					AccountID:       "acc1",
-					ISIN:            isin,
+					ISIN:            stringPtr(isin),
 					Quantity:        quantity,
 					AmountValue:     quantity * 100, // Buy price doesn't matter for this test
 					TransactionType: "buy",
@@ -417,7 +422,7 @@ func TestProperty_CurrentValueCalculation(t *testing.T) {
 				transactions = append(transactions, models.Transaction{
 					ID:              formatTxID(i),
 					AccountID:       "acc1",
-					ISIN:            isin,
+					ISIN:            stringPtr(isin),
 					Quantity:        quantity,
 					AmountValue:     quantity * 50, // Buy price
 					TransactionType: "buy",
@@ -459,7 +464,7 @@ func TestProperty_CurrentValueCalculation(t *testing.T) {
 				{
 					ID:              "tx1",
 					AccountID:       "acc1",
-					ISIN:            isin,
+					ISIN:            stringPtr(isin),
 					Quantity:        buyQuantity,
 					AmountValue:     buyQuantity * 100,
 					TransactionType: "buy",
@@ -472,7 +477,7 @@ func TestProperty_CurrentValueCalculation(t *testing.T) {
 				transactions = append(transactions, models.Transaction{
 					ID:              "tx2",
 					AccountID:       "acc1",
-					ISIN:            isin,
+					ISIN:            stringPtr(isin),
 					Quantity:        sellQuantity,
 					AmountValue:     sellQuantity * 100,
 					TransactionType: "sell",

@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 	"valhafin/internal/domain/models"
@@ -11,6 +12,11 @@ import (
 	"valhafin/internal/service/encryption"
 	"valhafin/internal/service/scraper/types"
 )
+
+// Helper function to create string pointers
+func stringPtr(s string) *string {
+	return &s
+}
 
 // setupTestDB creates a test database connection
 func setupTestDB(t *testing.T) *database.DB {
@@ -43,20 +49,28 @@ func cleanupTestDB(t *testing.T, db *database.DB) {
 		return
 	}
 
-	// Clean up test accounts
-	_, err := db.Exec("DELETE FROM accounts WHERE name LIKE 'Test%'")
-	if err != nil {
-		t.Logf("Warning: failed to clean up test accounts: %v", err)
-	}
-
-	// Clean up test transactions
+	// Clean up test transactions first (due to foreign key constraints)
 	platforms := []string{"traderepublic", "binance", "boursedirect"}
 	for _, platform := range platforms {
 		tableName := "transactions_" + platform
-		_, err := db.Exec("DELETE FROM " + tableName)
+		query := fmt.Sprintf(`
+			DELETE FROM %s 
+			WHERE account_id IN (
+				SELECT id FROM accounts WHERE name LIKE 'Test%%'
+			)
+		`, tableName)
+		_, err := db.Exec(query)
 		if err != nil {
-			t.Logf("Warning: failed to clean up test transactions for %s: %v", platform, err)
+			// Silently ignore errors during cleanup
+			_ = err
 		}
+	}
+
+	// Clean up test accounts
+	_, err := db.Exec("DELETE FROM accounts WHERE name LIKE 'Test%'")
+	if err != nil {
+		// Silently ignore errors during cleanup
+		_ = err
 	}
 }
 
@@ -184,8 +198,8 @@ func TestProperty4_FullInitialSync(t *testing.T) {
 					AmountCurrency:  "EUR",
 					AmountValue:     100.0,
 					TransactionType: "buy",
-					ISIN:            testISIN,
-					Metadata:        "{}",
+					ISIN:            stringPtr(testISIN),
+					Metadata:        stringPtr("{}"),
 				}
 			}
 
@@ -291,8 +305,8 @@ func TestProperty5_IncrementalSync(t *testing.T) {
 			AmountCurrency:  "EUR",
 			AmountValue:     100.0,
 			TransactionType: "buy",
-			ISIN:            testISIN,
-			Metadata:        "{}",
+			ISIN:            stringPtr(testISIN),
+			Metadata:        stringPtr("{}"),
 		},
 		{
 			ID:              "tx-old-2",
@@ -301,8 +315,8 @@ func TestProperty5_IncrementalSync(t *testing.T) {
 			AmountCurrency:  "EUR",
 			AmountValue:     200.0,
 			TransactionType: "buy",
-			ISIN:            testISIN,
-			Metadata:        "{}",
+			ISIN:            stringPtr(testISIN),
+			Metadata:        stringPtr("{}"),
 		},
 	}
 
@@ -315,8 +329,8 @@ func TestProperty5_IncrementalSync(t *testing.T) {
 			AmountCurrency:  "EUR",
 			AmountValue:     150.0,
 			TransactionType: "buy",
-			ISIN:            testISIN,
-			Metadata:        "{}",
+			ISIN:            stringPtr(testISIN),
+			Metadata:        stringPtr("{}"),
 		},
 		{
 			ID:              "tx-new-2",
@@ -325,8 +339,8 @@ func TestProperty5_IncrementalSync(t *testing.T) {
 			AmountCurrency:  "EUR",
 			AmountValue:     250.0,
 			TransactionType: "sell",
-			ISIN:            testISIN,
-			Metadata:        "{}",
+			ISIN:            stringPtr(testISIN),
+			Metadata:        stringPtr("{}"),
 		},
 	}
 

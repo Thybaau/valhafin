@@ -218,14 +218,21 @@ func (s *PerformanceService) calculatePerformance(transactions []models.Transact
 		switch tx.TransactionType {
 		case "buy":
 			holding.Quantity += tx.Quantity
-			// AmountValue is negative for buys, so we take absolute value
-			investedAmount := -tx.AmountValue
+			// AmountValue represents the cost of the purchase (positive value)
+			investedAmount := tx.AmountValue
+			if investedAmount < 0 {
+				investedAmount = -investedAmount // Handle negative values if they exist
+			}
 			holding.Invested += investedAmount
 			// Add to total invested (all buys, even if later sold)
 			totalInvested += investedAmount
 		case "sell":
 			// Track total sales amount (positive value)
-			totalSales += tx.AmountValue
+			saleAmount := tx.AmountValue
+			if saleAmount < 0 {
+				saleAmount = -saleAmount // Handle negative values if they exist
+			}
+			totalSales += saleAmount
 			// Calculate realized gain/loss
 			avgCost := 0.0
 			if holding.Quantity > 0 {
@@ -269,9 +276,10 @@ func (s *PerformanceService) calculatePerformance(transactions []models.Transact
 	unrealizedGains := assetsValue - currentInvested
 
 	// Calculate performance percentage based on current investment
+	// Formula: performance % = ((current_value - total_invested - total_fees) / total_invested) × 100
 	performancePct := 0.0
 	if currentInvested > 0 {
-		performancePct = (unrealizedGains / currentInvested) * 100
+		performancePct = ((assetsValue - currentInvested - totalFees) / currentInvested) * 100
 	}
 
 	// Generate time series

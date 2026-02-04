@@ -12,6 +12,11 @@ import (
 	"github.com/leanovate/gopter/prop"
 )
 
+// Helper function to create string pointers
+func stringPtr(s string) *string {
+	return &s
+}
+
 // setupTestDB creates a test database for testing
 func setupTestDB(t *testing.T) *database.DB {
 	cfg := database.Config{
@@ -50,12 +55,20 @@ func cleanupTestDB(t *testing.T, db *database.DB) {
 	}
 
 	// Clean up transactions from all platform tables
+	// Use a subquery to find account_ids that match test accounts
 	platforms := []string{"traderepublic", "binance", "boursedirect"}
 	for _, platform := range platforms {
 		tableName := fmt.Sprintf("transactions_%s", platform)
-		_, err := db.Exec(fmt.Sprintf("DELETE FROM %s WHERE account_id LIKE 'test-%%'", tableName))
+		query := fmt.Sprintf(`
+			DELETE FROM %s 
+			WHERE account_id IN (
+				SELECT id FROM accounts WHERE name LIKE 'Test%%'
+			)
+		`, tableName)
+		_, err := db.Exec(query)
 		if err != nil {
-			t.Logf("Warning: failed to clean up %s: %v", tableName, err)
+			// Silently ignore errors during cleanup
+			_ = err
 		}
 	}
 }
@@ -147,9 +160,9 @@ func TestProperty_FeesAggregation(t *testing.T) {
 					AmountCurrency:  "EUR",
 					Fees:            fmt.Sprintf("%.2f €", feeValue),
 					TransactionType: txType,
-					ISIN:            "TEST123456",
+					ISIN:            stringPtr("TEST123456"),
 					Quantity:        1.0,
-					Metadata:        "{}",
+					Metadata:        stringPtr("{}"),
 				}
 
 				transactions = append(transactions, tx)
@@ -314,9 +327,9 @@ func TestProperty_GlobalFeesAggregation(t *testing.T) {
 						AmountCurrency:  "EUR",
 						Fees:            fmt.Sprintf("%.2f €", feeValue),
 						TransactionType: "buy",
-						ISIN:            "TEST123456",
+						ISIN:            stringPtr("TEST123456"),
 						Quantity:        1.0,
-						Metadata:        "{}",
+						Metadata:        stringPtr("{}"),
 					}
 
 					if err := db.CreateTransaction(&tx, "traderepublic"); err != nil {
@@ -429,9 +442,9 @@ func TestProperty_FeesFilteringByPeriod(t *testing.T) {
 					AmountCurrency:  "EUR",
 					Fees:            fmt.Sprintf("%.2f €", feeValue),
 					TransactionType: "buy",
-					ISIN:            "TEST123456",
+					ISIN:            stringPtr("TEST123456"),
 					Quantity:        1.0,
-					Metadata:        "{}",
+					Metadata:        stringPtr("{}"),
 				}
 
 				if err := db.CreateTransaction(&tx, "traderepublic"); err != nil {
