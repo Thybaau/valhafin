@@ -85,10 +85,10 @@ export default function AccountCard({ account }: AccountCardProps) {
 
   return (
     <>
-      <div className="card">
+      <div className="card hover:shadow-lg hover:scale-[1.02] transition-all duration-300">
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className={`w-3 h-3 rounded-full ${platformColors[account.platform]}`}></div>
+            <div className={`w-3 h-3 rounded-full ${platformColors[account.platform]} animate-pulse`}></div>
             <div>
               <h3 className="text-lg font-semibold text-text-primary">{account.name}</h3>
               <p className="text-sm text-text-muted">{platformLabels[account.platform]}</p>
@@ -98,7 +98,7 @@ export default function AccountCard({ account }: AccountCardProps) {
           {!showDeleteConfirm && (
             <button
               onClick={() => setShowDeleteConfirm(true)}
-              className="text-error hover:text-error/80 transition-colors"
+              className="text-error hover:text-error/80 transition-all hover:scale-110"
               title="Supprimer le compte"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -114,7 +114,7 @@ export default function AccountCard({ account }: AccountCardProps) {
         </div>
 
         {showDeleteConfirm && (
-          <div className="mb-4 p-3 bg-error/10 border border-error rounded-md">
+          <div className="mb-4 p-3 bg-error/10 border border-error rounded-md animate-slide-in">
             <p className="text-sm text-error mb-3">
               Êtes-vous sûr de vouloir supprimer ce compte ? Toutes les transactions seront supprimées.
             </p>
@@ -173,7 +173,7 @@ export default function AccountCard({ account }: AccountCardProps) {
         </button>
 
         {syncMutation.isSuccess && (
-          <div className="mt-3 p-2 bg-success/10 border border-success rounded-md">
+          <div className="mt-3 p-2 bg-success/10 border border-success rounded-md animate-slide-in">
             <p className="text-sm text-success">
               ✓ {syncMutation.data.transactions_added} transaction(s) ajoutée(s)
             </p>
@@ -181,7 +181,7 @@ export default function AccountCard({ account }: AccountCardProps) {
         )}
 
         {completeSyncMutation.isSuccess && (
-          <div className="mt-3 p-2 bg-success/10 border border-success rounded-md">
+          <div className="mt-3 p-2 bg-success/10 border border-success rounded-md animate-slide-in">
             <p className="text-sm text-success">
               ✓ {completeSyncMutation.data.transactions_added} transaction(s) ajoutée(s)
             </p>
@@ -189,7 +189,7 @@ export default function AccountCard({ account }: AccountCardProps) {
         )}
 
         {(syncMutation.isError || initSyncMutation.isError || completeSyncMutation.isError) && (
-          <div className="mt-3 p-2 bg-error/10 border border-error rounded-md">
+          <div className="mt-3 p-2 bg-error/10 border border-error rounded-md animate-slide-in">
             <p className="text-sm text-error">
               Erreur lors de la synchronisation
             </p>
@@ -199,8 +199,8 @@ export default function AccountCard({ account }: AccountCardProps) {
 
       {/* Modal 2FA pour Trade Republic */}
       {show2FAModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-background-secondary rounded-lg max-w-md w-full p-6">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-background-secondary rounded-lg max-w-md w-full p-6 animate-scale-in">
             <h3 className="text-xl font-bold text-text-primary mb-4">
               Code de vérification Trade Republic
             </h3>

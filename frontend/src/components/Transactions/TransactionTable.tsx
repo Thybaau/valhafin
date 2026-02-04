@@ -61,10 +61,18 @@ export default function TransactionTable({
   }
 
   const formatAmount = (value: number, currency: string) => {
+    // Gérer les valeurs NaN ou invalides
+    const numValue = isNaN(value) ? 0 : value
     return new Intl.NumberFormat('fr-FR', {
       style: 'currency',
       currency: currency || 'EUR',
-    }).format(value)
+    }).format(numValue)
+  }
+
+  const formatFees = (fees: string | number | null | undefined, currency: string) => {
+    if (!fees) return formatAmount(0, currency)
+    const numFees = typeof fees === 'string' ? parseFloat(fees) : fees
+    return formatAmount(isNaN(numFees) ? 0 : numFees, currency)
   }
 
   const getTypeLabel = (type: string) => {
@@ -282,7 +290,8 @@ export default function TransactionTable({
 
   return (
     <div className="card">
-      <div className="overflow-x-auto">
+      {/* Desktop table view */}
+      <div className="hidden lg:block overflow-x-auto">
         <table className="w-full">
           <thead>
             <tr className="border-b border-background-tertiary">
@@ -581,12 +590,7 @@ export default function TransactionTable({
                     </div>
                   ) : (
                     <span className="flex items-center justify-end">
-                      {transaction.fees
-                        ? formatAmount(
-                            parseFloat(transaction.fees.toString()),
-                            transaction.amount_currency
-                          )
-                        : '-'}
+                      {formatFees(transaction.fees, transaction.amount_currency)}
                       {isEditing && (
                         <EditIcon
                           onClick={() =>
@@ -642,6 +646,70 @@ export default function TransactionTable({
             )})}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile card view */}
+      <div className="lg:hidden space-y-4">
+        {transactions.map((transaction) => (
+          <div
+            key={transaction.id}
+            className="bg-background-tertiary rounded-lg p-4 space-y-3 hover:bg-opacity-80 transition-all duration-200"
+          >
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                {transaction.isin ? (
+                  <button
+                    onClick={() => onAssetClick?.(transaction.isin!)}
+                    className="text-accent-primary hover:text-accent-hover transition-colors text-left font-medium"
+                  >
+                    {transaction.title}
+                  </button>
+                ) : (
+                  <div className="font-medium text-text-primary">{transaction.title}</div>
+                )}
+                {transaction.subtitle && (
+                  <div className="text-sm text-text-muted mt-1">{transaction.subtitle}</div>
+                )}
+              </div>
+              <span className={`text-xs px-2 py-1 rounded ${getTypeColor(transaction.transaction_type)} bg-background-secondary`}>
+                {getTypeLabel(transaction.transaction_type)}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <div className="text-text-muted text-xs">Date</div>
+                <div className="text-text-secondary">{formatDate(transaction.timestamp)}</div>
+              </div>
+              <div className="text-right">
+                <div className="text-text-muted text-xs">Montant</div>
+                <div className={`font-medium ${transaction.amount_value >= 0 ? 'text-success' : 'text-error'}`}>
+                  {formatAmount(transaction.amount_value, transaction.amount_currency)}
+                </div>
+              </div>
+              {transaction.quantity && (
+                <div>
+                  <div className="text-text-muted text-xs">Quantité</div>
+                  <div className="text-text-secondary">{transaction.quantity.toFixed(4)}</div>
+                </div>
+              )}
+              {(transaction.fees && parseFloat(transaction.fees.toString()) > 0) && (
+                <div className="text-right">
+                  <div className="text-text-muted text-xs">Frais</div>
+                  <div className="text-text-muted">
+                    {formatFees(transaction.fees, transaction.amount_currency)}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {transaction.isin && (
+              <div className="text-xs text-text-muted pt-2 border-t border-background-secondary">
+                ISIN: {transaction.isin}
+              </div>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   )

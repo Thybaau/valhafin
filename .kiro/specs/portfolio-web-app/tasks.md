@@ -303,14 +303,14 @@ Ce plan d'implémentation transforme le design en étapes concrètes de dévelop
     - Afficher un graphique de performance globale
     - _Exigences: 4.2, 4.4_
 
-- [ ] 23. Frontend - Responsive et animations
-  - [ ] 23.1 Rendre l'application responsive
+- [x] 23. Frontend - Responsive et animations
+  - [x] 23.1 Rendre l'application responsive
     - Adapter le layout pour mobile et tablette
     - Adapter les tableaux pour les petits écrans
     - Adapter les graphiques pour les petits écrans
     - _Exigences: 6.3_
   
-  - [ ] 23.2 Ajouter des transitions et animations
+  - [x] 23.2 Ajouter des transitions et animations
     - Ajouter des transitions entre les pages
     - Ajouter des animations subtiles sur les interactions
     - _Exigences: 6.4_

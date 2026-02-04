@@ -7,6 +7,11 @@ interface NavItem {
   icon: ReactNode
 }
 
+interface SidebarProps {
+  isOpen: boolean
+  onClose: () => void
+}
+
 const navItems: NavItem[] = [
   {
     name: 'Dashboard',
@@ -64,11 +69,18 @@ const navItems: NavItem[] = [
   },
 ]
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const location = useLocation()
 
   return (
-    <aside className="w-64 min-h-screen bg-background-secondary border-r border-background-tertiary">
+    <aside
+      className={`
+        fixed lg:static inset-y-0 left-0 z-40
+        w-64 min-h-screen bg-background-secondary border-r border-background-tertiary
+        transform transition-transform duration-300 ease-in-out
+        ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+      `}
+    >
       <div className="p-6">
         <h1 className="text-2xl font-bold text-accent-primary">Valhafin</h1>
         <p className="text-sm text-text-muted mt-1">Portfolio Manager</p>
@@ -81,10 +93,11 @@ export default function Sidebar() {
             <Link
               key={item.path}
               to={item.path}
-              className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
+              onClick={onClose}
+              className={`flex items-center gap-3 px-3 py-2 rounded-md transition-all duration-200 ${
                 isActive
-                  ? 'bg-accent-primary text-white'
-                  : 'text-text-secondary hover:bg-background-tertiary hover:text-text-primary'
+                  ? 'bg-accent-primary text-white shadow-md transform scale-105'
+                  : 'text-text-secondary hover:bg-background-tertiary hover:text-text-primary hover:translate-x-1'
               }`}
             >
               {item.icon}

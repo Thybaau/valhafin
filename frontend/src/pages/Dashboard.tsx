@@ -68,10 +68,10 @@ export default function Dashboard() {
         subtitle="Vue d'ensemble de votre portefeuille"
       />
       
-      <div className="p-8">
+      <div className="p-4 sm:p-6 lg:p-8">
         {/* Metrics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="card">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
+          <div className="card animate-scale-in">
             <p className="text-text-muted text-sm mb-2">Valeur Totale</p>
             {perfLoading ? (
               <div className="h-10 flex items-center">
@@ -79,7 +79,7 @@ export default function Dashboard() {
               </div>
             ) : (
               <>
-                <p className="text-3xl font-bold text-text-primary">
+                <p className="text-2xl sm:text-3xl font-bold text-text-primary">
                   {formatCurrency(performance?.total_value || 0)}
                 </p>
                 <p className={`text-sm mt-2 ${(performance?.performance_pct || 0) >= 0 ? 'text-success' : 'text-error'}`}>
@@ -90,20 +90,20 @@ export default function Dashboard() {
             )}
           </div>
           
-          <div className="card">
+          <div className="card animate-scale-in" style={{ animationDelay: '0.1s' }}>
             <p className="text-text-muted text-sm mb-2">Investissement</p>
             {perfLoading ? (
               <div className="h-10 flex items-center">
                 <div className="animate-pulse bg-background-tertiary h-8 w-24 rounded"></div>
               </div>
             ) : (
-              <p className="text-3xl font-bold text-text-primary">
+              <p className="text-2xl sm:text-3xl font-bold text-text-primary">
                 {formatCurrency(performance?.total_invested || 0)}
               </p>
             )}
           </div>
           
-          <div className="card">
+          <div className="card animate-scale-in" style={{ animationDelay: '0.2s' }}>
             <p className="text-text-muted text-sm mb-2">Gains/Pertes</p>
             {perfLoading ? (
               <div className="h-10 flex items-center">
@@ -111,7 +111,7 @@ export default function Dashboard() {
               </div>
             ) : (
               <>
-                <p className={`text-3xl font-bold ${((performance?.realized_gains || 0) + (performance?.unrealized_gains || 0)) >= 0 ? 'text-success' : 'text-error'}`}>
+                <p className={`text-2xl sm:text-3xl font-bold ${((performance?.realized_gains || 0) + (performance?.unrealized_gains || 0)) >= 0 ? 'text-success' : 'text-error'}`}>
                   {((performance?.realized_gains || 0) + (performance?.unrealized_gains || 0)) >= 0 ? '+' : ''}
                   {formatCurrency((performance?.realized_gains || 0) + (performance?.unrealized_gains || 0))}
                 </p>
@@ -124,14 +124,14 @@ export default function Dashboard() {
             )}
           </div>
           
-          <div className="card">
+          <div className="card animate-scale-in" style={{ animationDelay: '0.3s' }}>
             <p className="text-text-muted text-sm mb-2">Frais Totaux</p>
             {perfLoading ? (
               <div className="h-10 flex items-center">
                 <div className="animate-pulse bg-background-tertiary h-8 w-24 rounded"></div>
               </div>
             ) : (
-              <p className="text-3xl font-bold text-warning">
+              <p className="text-2xl sm:text-3xl font-bold text-warning">
                 {formatCurrency(performance?.total_fees || 0)}
               </p>
             )}
@@ -139,18 +139,18 @@ export default function Dashboard() {
         </div>
 
         {/* Performance Chart */}
-        <div className="mb-8">
+        <div className="mb-6 sm:mb-8">
           <div className="card">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold">Performance Globale</h2>
-              <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-3">
+              <h2 className="text-lg sm:text-xl font-semibold">Performance Globale</h2>
+              <div className="flex gap-2 flex-wrap">
                 {(['1m', '3m', '1y', 'all'] as const).map((p) => (
                   <button
                     key={p}
                     onClick={() => setPeriod(p)}
-                    className={`px-3 py-1 rounded text-sm transition-colors ${
+                    className={`px-3 py-1 rounded text-sm transition-all ${
                       period === p
-                        ? 'bg-accent-primary text-white'
+                        ? 'bg-accent-primary text-white shadow-md'
                         : 'bg-background-tertiary text-text-secondary hover:bg-background-tertiary/80'
                     }`}
                   >
@@ -174,12 +174,12 @@ export default function Dashboard() {
         </div>
 
         {/* Accounts and Transactions */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           {/* Accounts */}
           <div className="card">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold">Comptes</h2>
-              <Link to="/accounts" className="text-accent-primary hover:text-accent-hover text-sm">
+              <h2 className="text-lg sm:text-xl font-semibold">Comptes</h2>
+              <Link to="/accounts" className="text-accent-primary hover:text-accent-hover text-sm transition-colors">
                 Voir tout →
               </Link>
             </div>
@@ -204,8 +204,8 @@ export default function Dashboard() {
           {/* Recent Transactions */}
           <div className="card">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold">Dernières Transactions</h2>
-              <Link to="/transactions" className="text-accent-primary hover:text-accent-hover text-sm">
+              <h2 className="text-lg sm:text-xl font-semibold">Dernières Transactions</h2>
+              <Link to="/transactions" className="text-accent-primary hover:text-accent-hover text-sm transition-colors">
                 Voir tout →
               </Link>
             </div>
@@ -216,13 +216,13 @@ export default function Dashboard() {
                 transactions.transactions.map((transaction) => (
                   <div
                     key={transaction.id}
-                    className="flex items-center justify-between p-3 bg-background-tertiary rounded-lg"
+                    className="flex items-center justify-between p-3 bg-background-tertiary rounded-lg hover:bg-opacity-80 transition-all"
                   >
-                    <div className="flex-1">
-                      <p className="text-text-primary font-medium text-sm">
+                    <div className="flex-1 min-w-0 mr-3">
+                      <p className="text-text-primary font-medium text-sm truncate">
                         {transaction.title || transaction.subtitle || 'Transaction'}
                       </p>
-                      <div className="flex items-center gap-2 mt-1">
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
                         <span className={`text-xs font-medium ${getTransactionTypeColor(transaction.transaction_type)}`}>
                           {getTransactionTypeLabel(transaction.transaction_type)}
                         </span>
@@ -231,8 +231,8 @@ export default function Dashboard() {
                         </span>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className={`font-semibold ${
+                    <div className="text-right flex-shrink-0">
+                      <p className={`font-semibold text-sm ${
                         transaction.transaction_type.toLowerCase() === 'buy' || 
                         transaction.transaction_type.toLowerCase() === 'fee' ||
                         transaction.transaction_type.toLowerCase() === 'withdrawal'
