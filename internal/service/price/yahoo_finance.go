@@ -119,28 +119,28 @@ func (s *YahooFinanceService) GetPriceHistory(isin string, startDate, endDate ti
 
 	if daysDiff <= 7 {
 		rangeStr = "5d"
-		interval = "1d"
+		interval = "1d" // Daily for 1 week
 	} else if daysDiff <= 30 {
 		rangeStr = "1mo"
-		interval = "1d"
+		interval = "1d" // Daily for 1 month
 	} else if daysDiff <= 90 {
 		rangeStr = "3mo"
-		interval = "1d"
+		interval = "1wk" // Weekly for 3 months
 	} else if daysDiff <= 180 {
 		rangeStr = "6mo"
-		interval = "1d"
+		interval = "1wk" // Weekly for 6 months
 	} else if daysDiff <= 365 {
 		rangeStr = "1y"
-		interval = "1d"
+		interval = "1wk" // Weekly for 1 year
 	} else if daysDiff <= 730 {
 		rangeStr = "2y"
-		interval = "1wk"
+		interval = "1wk" // Weekly for 2 years
 	} else if daysDiff <= 1825 {
 		rangeStr = "5y"
-		interval = "1wk"
+		interval = "1wk" // Weekly for 5 years
 	} else {
 		rangeStr = "max"
-		interval = "1mo"
+		interval = "1wk" // Weekly for max
 	}
 
 	historicalPrices, err := s.fetchHistoricalPrices(symbol, isin, asset.Currency, rangeStr, interval)
@@ -285,6 +285,12 @@ func (s *YahooFinanceService) fetchPriceFromYahoo(symbol string) (float64, strin
 	currency := chartResult.Meta.Currency
 
 	return price, currency, nil
+}
+
+// FetchHistoricalPrices fetches historical prices from Yahoo Finance with specific range and interval
+// This is a public wrapper for fetchHistoricalPrices to allow direct access from handlers
+func (s *YahooFinanceService) FetchHistoricalPrices(symbol, isin, expectedCurrency, rangeStr, interval string) ([]models.AssetPrice, error) {
+	return s.fetchHistoricalPrices(symbol, isin, expectedCurrency, rangeStr, interval)
 }
 
 // fetchHistoricalPrices fetches historical prices from Yahoo Finance

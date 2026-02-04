@@ -98,6 +98,7 @@ func SetupRoutesWithVersion(db *database.DB, encryptionService *encryption.Encry
 	api.HandleFunc("/assets/{isin}/price", handler.GetAssetPriceHandler).Methods("GET")
 	api.HandleFunc("/assets/{isin}/history", handler.GetAssetPriceHistoryHandler).Methods("GET")
 	api.HandleFunc("/assets/{isin}/price/update", handler.UpdateSingleAssetPrice).Methods("POST")
+	api.HandleFunc("/assets/{isin}/price/refresh", handler.RefreshAssetPricesHandler).Methods("POST")
 	api.HandleFunc("/assets/{isin}/symbol", handler.UpdateAssetSymbolHandler).Methods("PUT")
 	api.HandleFunc("/assets/symbols/resolve", handler.ResolveAllSymbolsHandler).Methods("POST")
 

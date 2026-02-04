@@ -31,4 +31,9 @@ export const assetsApi = {
     })
     return response.data
   },
+
+  // Forcer le rechargement des prix d'un actif
+  refreshAssetPrices: async (isin: string): Promise<void> => {
+    await apiClient.post(`/assets/${isin}/price/refresh`)
+  },
 }

@@ -10,7 +10,7 @@ import {
   ResponsiveContainer,
   ReferenceDot,
 } from 'recharts';
-import { Search, AlertCircle, CheckCircle } from 'lucide-react';
+import { Search, AlertCircle, CheckCircle, RefreshCw } from 'lucide-react';
 import { assetsApi } from '../services';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import ErrorMessage from '../components/common/ErrorMessage';
@@ -50,6 +50,7 @@ export default function Assets() {
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [assetToSearch, setAssetToSearch] = useState<AssetPosition | null>(null);
   const [timeRange, setTimeRange] = useState<'1W' | '1M' | '6M' | '1Y' | '2Y' | '5Y' | 'MAX'>('1Y');
+  const [refreshingAsset, setRefreshingAsset] = useState<string | null>(null);
 
   const { data: assets, isLoading, error, refetch } = useQuery<AssetPosition[]>({
     queryKey: ['assets'],
@@ -138,11 +139,30 @@ export default function Assets() {
     refetch();
   };
 
+  const handleRefreshPrices = async (isin: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setRefreshingAsset(isin);
+    try {
+      await assetsApi.refreshAssetPrices(isin);
+      // Refetch assets and price history
+      refetch();
+      if (selectedAsset?.isin === isin) {
+        // Force refetch of price history for selected asset
+        window.location.reload();
+      }
+    } catch (error) {
+      console.error('Failed to refresh prices:', error);
+    } finally {
+      setRefreshingAsset(null);
+    }
+  };
+
   // Prepare chart data
   const chartData = priceHistory?.map((point) => ({
     date: new Date(point.timestamp).toLocaleDateString('fr-FR', {
       day: '2-digit',
       month: '2-digit',
+      year: '2-digit',
     }),
     timestamp: point.timestamp,
     price: point.price,
@@ -462,18 +482,30 @@ export default function Assets() {
                     {formatPercent(asset.unrealized_gain_pct)}
                   </td>
                   <td className="px-6 py-4 text-center">
-                    {!asset.symbol_verified && (
+                    <div className="flex items-center justify-center gap-2">
+                      {!asset.symbol_verified && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenSearchModal(asset);
+                          }}
+                          className="inline-flex items-center gap-1 px-3 py-1 text-xs bg-orange-600 text-white rounded hover:bg-orange-700"
+                        >
+                          <Search className="w-3 h-3" />
+                          Verify
+                        </button>
+                      )}
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleOpenSearchModal(asset);
-                        }}
-                        className="inline-flex items-center gap-1 px-3 py-1 text-xs bg-orange-600 text-white rounded hover:bg-orange-700"
+                        onClick={(e) => handleRefreshPrices(asset.isin, e)}
+                        disabled={refreshingAsset === asset.isin}
+                        className="inline-flex items-center justify-center p-2 text-text-muted hover:text-accent-primary hover:bg-background-tertiary rounded transition-colors disabled:opacity-50"
+                        title="Recharger les prix"
                       >
-                        <Search className="w-3 h-3" />
-                        Verify
+                        <RefreshCw
+                          className={`w-4 h-4 ${refreshingAsset === asset.isin ? 'animate-spin' : ''}`}
+                        />
                       </button>
-                    )}
+                    </div>
                   </td>
                 </tr>
               ))}

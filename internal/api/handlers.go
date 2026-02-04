@@ -1392,6 +1392,70 @@ func (h *Handler) GetAssetPriceHistoryHandler(w http.ResponseWriter, r *http.Req
 	respondJSON(w, http.StatusOK, prices)
 }
 
+// RefreshAssetPricesHandler forces a refresh of all historical prices for an asset
+func (h *Handler) RefreshAssetPricesHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	isin := vars["isin"]
+
+	if isin == "" {
+		respondError(w, http.StatusBadRequest, "INVALID_REQUEST", "ISIN is required", nil)
+		return
+	}
+
+	log.Printf("INFO: Starting price refresh for %s", isin)
+
+	// Delete all existing prices for this asset to force fresh fetch
+	result, err := h.DB.Exec("DELETE FROM asset_prices WHERE isin = $1", isin)
+	if err != nil {
+		log.Printf("ERROR: Failed to delete prices for %s: %v", isin, err)
+		respondError(w, http.StatusInternalServerError, "DATABASE_ERROR", "Failed to clear price cache", map[string]string{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	rowsDeleted, _ := result.RowsAffected()
+	log.Printf("INFO: Cleared %d cached prices for %s", rowsDeleted, isin)
+
+	// Fetch complete price history
+	if err := h.fetchCompleteAssetPriceHistory(isin); err != nil {
+		log.Printf("ERROR: Failed to fetch price history for %s: %v", isin, err)
+		respondError(w, http.StatusInternalServerError, "PRICE_ERROR", "Failed to fetch prices", map[string]string{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	// Get count of stored prices
+	var priceCount int
+	if err := h.DB.Get(&priceCount, "SELECT COUNT(*) FROM asset_prices WHERE isin = $1", isin); err != nil {
+		priceCount = 0
+	}
+
+	// Get date range
+	var dateRange struct {
+		MinDate time.Time `db:"min_date"`
+		MaxDate time.Time `db:"max_date"`
+	}
+	err = h.DB.Get(&dateRange, "SELECT MIN(timestamp) as min_date, MAX(timestamp) as max_date FROM asset_prices WHERE isin = $1", isin)
+	if err != nil {
+		log.Printf("WARNING: Failed to get date range for %s: %v", isin, err)
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"message":       "Prices refreshed successfully",
+		"isin":          isin,
+		"data_points":   priceCount,
+		"deleted_cache": rowsDeleted,
+		"date_range": map[string]string{
+			"from": dateRange.MinDate.Format("2006-01-02"),
+			"to":   dateRange.MaxDate.Format("2006-01-02"),
+		},
+	})
+}
+
+// UpdateSingleAssetPrice forces an update of a single asset price
+
 // UpdateSingleAssetPrice forces an update of a single asset price
 func (h *Handler) UpdateSingleAssetPrice(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
@@ -1605,6 +1669,94 @@ func (h *Handler) SymbolSearchHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// fetchCompleteAssetPriceHistory fetches all price granularities for an asset
+// This ensures we have daily data for 1M, weekly for 5Y, and max historical data
+func (h *Handler) fetchCompleteAssetPriceHistory(isin string) error {
+	// Get asset to retrieve symbol
+	asset, err := h.DB.GetAssetByISIN(isin)
+	if err != nil {
+		return fmt.Errorf("asset not found: %w", err)
+	}
+
+	symbol := ""
+	if asset.Symbol != nil {
+		symbol = *asset.Symbol
+	}
+
+	if symbol == "" {
+		return fmt.Errorf("no symbol found for asset")
+	}
+
+	// Cast to Yahoo Finance service to access FetchHistoricalPrices
+	yahooService, ok := h.PriceService.(*price.YahooFinanceService)
+	if !ok {
+		return fmt.Errorf("price service is not Yahoo Finance")
+	}
+
+	// Fetch data in multiple periods with specific granularity
+	// 1. Last month with daily data (1d interval)
+	prices1m, err := yahooService.FetchHistoricalPrices(symbol, isin, asset.Currency, "1mo", "1d")
+	if err != nil {
+		return fmt.Errorf("failed to fetch 1m daily prices: %w", err)
+	}
+
+	// 2. 5 years with weekly data (1wk interval)
+	prices5y, err := yahooService.FetchHistoricalPrices(symbol, isin, asset.Currency, "5y", "1wk")
+	if err != nil {
+		log.Printf("WARNING: Failed to fetch 5y weekly prices for %s: %v", isin, err)
+	}
+
+	// 3. Max range with weekly data (1wk interval)
+	pricesMax, err := yahooService.FetchHistoricalPrices(symbol, isin, asset.Currency, "max", "1wk")
+	if err != nil {
+		log.Printf("WARNING: Failed to fetch max weekly prices for %s: %v", isin, err)
+	}
+
+	// Combine all prices and remove duplicates (keep daily over weekly for overlapping dates)
+	priceMap := make(map[string]models.AssetPrice)
+
+	// Add max prices first (lowest priority)
+	for _, p := range pricesMax {
+		dateKey := p.Timestamp.Format("2006-01-02")
+		priceMap[dateKey] = p
+	}
+
+	// Add 5y prices (medium priority, overwrites max if same date)
+	for _, p := range prices5y {
+		dateKey := p.Timestamp.Format("2006-01-02")
+		priceMap[dateKey] = p
+	}
+
+	// Add 1m daily prices (highest priority, overwrites weekly if same date)
+	for _, p := range prices1m {
+		dateKey := p.Timestamp.Format("2006-01-02")
+		priceMap[dateKey] = p
+	}
+
+	// Convert map back to slice
+	var allPrices []models.AssetPrice
+	for _, p := range priceMap {
+		allPrices = append(allPrices, p)
+	}
+
+	// Sort by timestamp
+	sort.Slice(allPrices, func(i, j int) bool {
+		return allPrices[i].Timestamp.Before(allPrices[j].Timestamp)
+	})
+
+	// Store all prices in database
+	if len(allPrices) > 0 {
+		if err := h.DB.CreateAssetPricesBatch(allPrices); err != nil {
+			return fmt.Errorf("failed to store prices: %w", err)
+		}
+	}
+
+	log.Printf("INFO: Stored %d price points for %s (1m daily: %d, 5y weekly: %d, max weekly: %d)",
+		len(allPrices), isin, len(prices1m), len(prices5y), len(pricesMax))
+
+	return nil
+}
+
 // resolveAssetSymbols resolves Yahoo Finance symbols for assets that don't have verified symbols
 func (h *Handler) resolveAssetSymbols() int {
 	yahooService, ok := h.PriceService.(*price.YahooFinanceService)
@@ -1701,6 +1853,13 @@ func (h *Handler) resolveAssetSymbols() int {
 
 		log.Printf("INFO: Resolved symbol for %s: %s → %s (verified: %v)", asset.ISIN, symbolToResolve, resolvedSymbol, verified)
 		resolved++
+
+		// Fetch complete price history for this asset
+		if err := h.fetchCompleteAssetPriceHistory(asset.ISIN); err != nil {
+			log.Printf("WARNING: Failed to fetch price history for %s: %v", asset.ISIN, err)
+		} else {
+			log.Printf("INFO: Fetched complete price history for %s", asset.ISIN)
+		}
 
 		// Small delay to be respectful to Yahoo Finance
 		time.Sleep(200 * time.Millisecond)
