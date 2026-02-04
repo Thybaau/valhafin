@@ -49,6 +49,7 @@ export default function Assets() {
   const [selectedAsset, setSelectedAsset] = useState<AssetPosition | null>(null);
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [assetToSearch, setAssetToSearch] = useState<AssetPosition | null>(null);
+  const [timeRange, setTimeRange] = useState<'1W' | '1M' | '6M' | '1Y'>('1Y');
 
   const { data: assets, isLoading, error, refetch } = useQuery<AssetPosition[]>({
     queryKey: ['assets'],
@@ -64,12 +65,28 @@ export default function Assets() {
 
   // Get price history for selected asset
   const { data: priceHistory } = useQuery<PriceHistory[]>({
-    queryKey: ['assetHistory', selectedAsset?.isin],
+    queryKey: ['assetHistory', selectedAsset?.isin, timeRange],
     queryFn: () => {
       if (!selectedAsset) return Promise.resolve([]);
-      const startDate = new Date();
-      startDate.setFullYear(startDate.getFullYear() - 2);
       const endDate = new Date();
+      const startDate = new Date();
+      
+      // Calculate start date based on time range
+      switch (timeRange) {
+        case '1W':
+          startDate.setDate(startDate.getDate() - 7);
+          break;
+        case '1M':
+          startDate.setMonth(startDate.getMonth() - 1);
+          break;
+        case '6M':
+          startDate.setMonth(startDate.getMonth() - 6);
+          break;
+        case '1Y':
+          startDate.setFullYear(startDate.getFullYear() - 1);
+          break;
+      }
+      
       return assetsApi.getAssetPriceHistory(
         selectedAsset.isin,
         startDate.toISOString().split('T')[0],
@@ -121,6 +138,25 @@ export default function Assets() {
     timestamp: point.timestamp,
     price: point.price,
   })) || [];
+
+  // Calculate period gain/loss
+  const periodGain = chartData.length > 0 && selectedAsset ? (() => {
+    const firstPrice = chartData[0].price;
+    const lastPrice = chartData[chartData.length - 1].price;
+    const quantity = selectedAsset.quantity;
+    
+    const firstValue = firstPrice * quantity;
+    const lastValue = lastPrice * quantity;
+    const gain = lastValue - firstValue;
+    const gainPct = (gain / firstValue) * 100;
+    
+    return {
+      gain,
+      gainPct,
+      firstPrice,
+      lastPrice,
+    };
+  })() : null;
 
   // Create purchase markers - only include purchases that have corresponding chart data
   const purchaseMarkers = selectedAsset?.purchases
@@ -189,6 +225,23 @@ export default function Assets() {
               )}
             </div>
 
+            {/* Time Range Selector */}
+            <div className="mb-4 flex gap-2">
+              {(['1W', '1M', '6M', '1Y'] as const).map((range) => (
+                <button
+                  key={range}
+                  onClick={() => setTimeRange(range)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    timeRange === range
+                      ? 'bg-accent-primary text-white'
+                      : 'bg-background-tertiary text-text-muted hover:bg-background-tertiary/70'
+                  }`}
+                >
+                  {range}
+                </button>
+              ))}
+            </div>
+
             {/* Summary Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               <div className="bg-background-tertiary rounded-lg p-4">
@@ -210,16 +263,24 @@ export default function Assets() {
                 </div>
               </div>
               <div className="bg-background-tertiary rounded-lg p-4">
-                <div className="text-sm text-text-muted">Gain/Perte</div>
+                <div className="text-sm text-text-muted">
+                  Gain/Perte ({timeRange})
+                </div>
                 <div
                   className={`text-lg font-semibold mt-1 ${
-                    selectedAsset.unrealized_gain >= 0 ? 'text-success' : 'text-error'
+                    periodGain && periodGain.gain >= 0 ? 'text-success' : 'text-error'
                   }`}
                 >
-                  {formatCurrency(selectedAsset.unrealized_gain, selectedAsset.currency)}
-                  <span className="text-sm ml-2">
-                    ({formatPercent(selectedAsset.unrealized_gain_pct)})
-                  </span>
+                  {periodGain ? (
+                    <>
+                      {formatCurrency(periodGain.gain, selectedAsset.currency)}
+                      <span className="text-sm ml-2">
+                        ({formatPercent(periodGain.gainPct)})
+                      </span>
+                    </>
+                  ) : (
+                    '-'
+                  )}
                 </div>
               </div>
             </div>
