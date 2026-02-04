@@ -75,6 +75,11 @@ export default function PerformanceMetrics({ performance, isLoading }: Performan
         >
           {formatPercentage(performance.performance_pct)}
         </div>
+        <div className="text-xs text-text-muted mt-2">
+          Non réalisés: {formatCurrency(performance.unrealized_gains)}
+          <br />
+          Réalisés: {formatCurrency(performance.realized_gains)}
+        </div>
       </div>
 
       <div className="card">

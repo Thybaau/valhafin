@@ -268,14 +268,10 @@ func (s *PerformanceService) calculatePerformance(transactions []models.Transact
 	// Calculate unrealized gains (current value of assets - invested amount still in holdings)
 	unrealizedGains := assetsValue - currentInvested
 
-	// Calculate performance percentage
+	// Calculate performance percentage based on current investment
 	performancePct := 0.0
-	if totalInvested > 0 {
-		// Performance = (total value - total deposits) / total deposits * 100
-		// This shows the return on the money deposited
-		if totalDeposits > 0 {
-			performancePct = ((totalValue - totalDeposits) / totalDeposits) * 100
-		}
+	if currentInvested > 0 {
+		performancePct = (unrealizedGains / currentInvested) * 100
 	}
 
 	// Generate time series
@@ -283,7 +279,7 @@ func (s *PerformanceService) calculatePerformance(transactions []models.Transact
 
 	return &Performance{
 		TotalValue:      totalValue,
-		TotalInvested:   totalInvested - totalSales, // Total buys - total sells
+		TotalInvested:   currentInvested, // Amount currently invested in open positions
 		CashBalance:     cashBalance,
 		TotalFees:       totalFees,
 		RealizedGains:   totalSales + totalInterests - totalFees, // Realized gains from sales + interests - fees
@@ -481,8 +477,8 @@ func (s *PerformanceService) generateTimeSeries(transactions []models.Transactio
 			cashBalance += tx.AmountValue
 		}
 
-		// Calculate current portfolio value
-		portfolioValue := cashBalance
+		// Calculate current portfolio value (assets only, no cash)
+		portfolioValue := 0.0
 		for isin, holding := range currentHoldings {
 			if holding.Quantity > 0 {
 				currentPrice, err := s.PriceService.GetCurrentPrice(isin)
@@ -501,8 +497,8 @@ func (s *PerformanceService) generateTimeSeries(transactions []models.Transactio
 		})
 	}
 
-	// Add final point (current value)
-	finalValue := cashBalance
+	// Add final point (current value - assets only, no cash)
+	finalValue := 0.0
 	for isin, holding := range currentHoldings {
 		if holding.Quantity > 0 {
 			currentPrice, err := s.PriceService.GetCurrentPrice(isin)
