@@ -6,15 +6,9 @@ import { useGlobalPerformance, useAccountPerformance } from '../hooks/usePerform
 import { useAccounts } from '../hooks/useAccounts'
 import LoadingSpinner from '../components/common/LoadingSpinner'
 import ErrorMessage from '../components/common/ErrorMessage'
+import type { Account } from '../types'
 
 type Period = '1m' | '3m' | '1y' | 'all'
-
-interface Account {
-  id: string
-  name: string
-  platform: string
-  last_sync?: string
-}
 
 function AccountPerformanceCard({ account, period }: { account: Account; period: Period }) {
   const { data: accountPerf, isLoading } = useAccountPerformance(account.id, period)

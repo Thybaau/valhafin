@@ -1,5 +1,9 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import Header from '../components/Layout/Header'
+import FeesOverview from '../components/Fees/FeesOverview'
+import FeesChart from '../components/Fees/FeesChart'
+import ErrorMessage from '../components/common/ErrorMessage'
+import { useGlobalFees } from '../hooks/useFees'
 
 type Period = '1m' | '3m' | '1y' | 'all'
 
@@ -12,6 +16,33 @@ export default function Fees() {
     { value: '1y', label: '1 An' },
     { value: 'all', label: 'Tout' },
   ]
+
+  // Calculate date range based on period
+  const filters = useMemo(() => {
+    const endDate = new Date()
+    const startDate = new Date()
+
+    switch (period) {
+      case '1m':
+        startDate.setMonth(startDate.getMonth() - 1)
+        break
+      case '3m':
+        startDate.setMonth(startDate.getMonth() - 3)
+        break
+      case '1y':
+        startDate.setFullYear(startDate.getFullYear() - 1)
+        break
+      case 'all':
+        return { period: 'all' as const }
+    }
+
+    return {
+      start_date: startDate.toISOString().split('T')[0],
+      end_date: endDate.toISOString().split('T')[0],
+    }
+  }, [period])
+
+  const { data: feesData, isLoading, error } = useGlobalFees(filters)
 
   return (
     <div>
@@ -37,59 +68,27 @@ export default function Fees() {
           ))}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="card">
-            <p className="text-text-muted text-sm mb-2">Frais Totaux</p>
-            <p className="text-3xl font-bold text-text-primary">€0.00</p>
+        {error && (
+          <div className="mb-6">
+            <ErrorMessage message="Erreur lors du chargement des données de frais" />
           </div>
-          
-          <div className="card">
-            <p className="text-text-muted text-sm mb-2">Frais Moyens</p>
-            <p className="text-3xl font-bold text-text-primary">€0.00</p>
-            <p className="text-text-muted text-sm mt-2">par transaction</p>
-          </div>
-          
-          <div className="card">
-            <p className="text-text-muted text-sm mb-2">Impact sur Performance</p>
-            <p className="text-3xl font-bold text-error">-0.00%</p>
-          </div>
-        </div>
+        )}
 
-        <div className="card mb-6">
-          <h2 className="text-xl font-semibold mb-4">Évolution des Frais</h2>
-          <div className="h-64 flex items-center justify-center text-text-muted">
-            Graphique d'évolution des frais à venir
-          </div>
-        </div>
+        {feesData && (
+          <>
+            <FeesOverview metrics={feesData} isLoading={isLoading} />
+            
+            <div className="mt-8">
+              <FeesChart data={feesData.time_series} isLoading={isLoading} />
+            </div>
+          </>
+        )}
 
-        <div className="card">
-          <h2 className="text-xl font-semibold mb-4">Répartition par Type</h2>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between py-3 border-b border-background-tertiary">
-              <div className="flex items-center gap-3">
-                <div className="w-3 h-3 rounded-full bg-accent-primary"></div>
-                <span className="text-text-primary">Frais d'achat</span>
-              </div>
-              <span className="text-text-primary font-semibold">€0.00</span>
-            </div>
-            
-            <div className="flex items-center justify-between py-3 border-b border-background-tertiary">
-              <div className="flex items-center gap-3">
-                <div className="w-3 h-3 rounded-full bg-accent-light"></div>
-                <span className="text-text-primary">Frais de vente</span>
-              </div>
-              <span className="text-text-primary font-semibold">€0.00</span>
-            </div>
-            
-            <div className="flex items-center justify-between py-3">
-              <div className="flex items-center gap-3">
-                <div className="w-3 h-3 rounded-full bg-warning"></div>
-                <span className="text-text-primary">Autres frais</span>
-              </div>
-              <span className="text-text-primary font-semibold">€0.00</span>
-            </div>
+        {!feesData && !isLoading && !error && (
+          <div className="card text-center py-12 text-text-muted">
+            Aucune donnée de frais disponible
           </div>
-        </div>
+        )}
       </div>
     </div>
   )

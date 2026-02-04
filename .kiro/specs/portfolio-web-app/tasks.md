@@ -288,8 +288,8 @@ Ce plan d'implémentation transforme le design en étapes concrètes de dévelop
     - Afficher les métriques de l'actif
     - _Exigences: 4.8, 4.9_
 
-- [ ] 21. Frontend - Métriques de frais
-  - [ ] 21.1 Implémenter la page des frais
+- [x] 21. Frontend - Métriques de frais
+  - [x] 21.1 Implémenter la page des frais
     - Créer FeesOverview pour afficher les métriques (total, moyenne, répartition)
     - Créer FeesChart pour le graphique d'évolution des frais
     - Implémenter le sélecteur de période
