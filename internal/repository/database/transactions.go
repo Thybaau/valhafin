@@ -360,13 +360,14 @@ func (db *DB) GetTransactionsByAccountWithSort(accountID string, platform string
 
 	query := fmt.Sprintf(`
 		SELECT 
-			id, account_id, timestamp, title, icon, avatar, subtitle,
-			amount_currency, amount_value, amount_fraction, status,
-			action_type, action_payload, cash_account_number, hidden, deleted,
-			actions, dividend_per_share, taxes, total, shares, share_price,
-			fees, amount, isin, quantity, transaction_type, metadata
-		FROM %s
-		WHERE account_id = $1 AND (subtitle IS NULL OR subtitle != 'Échec du plan d''épargne')
+			t.id, t.account_id, t.timestamp, t.title, t.icon, t.avatar, t.subtitle,
+			t.amount_currency, t.amount_value, t.amount_fraction, t.status,
+			t.action_type, t.action_payload, t.cash_account_number, t.hidden, t.deleted,
+			t.actions, t.dividend_per_share, t.taxes, t.total, t.shares, t.share_price,
+			t.fees, t.amount, t.isin, t.quantity, t.transaction_type, t.metadata
+		FROM %s t
+		LEFT JOIN assets a ON t.isin = a.isin
+		WHERE t.account_id = $1 AND (t.subtitle IS NULL OR t.subtitle != 'Échec du plan d''épargne')
 	`, tableName)
 
 	args := []interface{}{accountID}
@@ -375,44 +376,45 @@ func (db *DB) GetTransactionsByAccountWithSort(accountID string, platform string
 	// Apply filters
 	if filter.StartDate != "" {
 		argCount++
-		query += fmt.Sprintf(" AND timestamp >= $%d", argCount)
+		query += fmt.Sprintf(" AND t.timestamp >= $%d", argCount)
 		args = append(args, filter.StartDate)
 	}
 
 	if filter.EndDate != "" {
 		argCount++
-		query += fmt.Sprintf(" AND timestamp <= $%d", argCount)
+		query += fmt.Sprintf(" AND t.timestamp <= $%d", argCount)
 		args = append(args, filter.EndDate)
 	}
 
 	if filter.ISIN != "" {
 		argCount++
-		query += fmt.Sprintf(" AND isin = $%d", argCount)
-		args = append(args, filter.ISIN)
+		// Search by ISIN (case-insensitive partial match) OR asset name (case-insensitive partial match)
+		query += fmt.Sprintf(" AND (LOWER(t.isin) LIKE LOWER($%d) OR LOWER(a.name) LIKE LOWER($%d))", argCount, argCount)
+		args = append(args, "%"+filter.ISIN+"%")
 	}
 
 	if filter.TransactionType != "" {
 		argCount++
-		query += fmt.Sprintf(" AND transaction_type = $%d", argCount)
+		query += fmt.Sprintf(" AND t.transaction_type = $%d", argCount)
 		args = append(args, filter.TransactionType)
 	}
 
 	// Apply sorting
 	if sortBy == "timestamp" {
 		if sortOrder == "asc" {
-			query += " ORDER BY timestamp ASC"
+			query += " ORDER BY t.timestamp ASC"
 		} else {
-			query += " ORDER BY timestamp DESC"
+			query += " ORDER BY t.timestamp DESC"
 		}
 	} else if sortBy == "amount" {
 		if sortOrder == "asc" {
-			query += " ORDER BY amount_value ASC"
+			query += " ORDER BY t.amount_value ASC"
 		} else {
-			query += " ORDER BY amount_value DESC"
+			query += " ORDER BY t.amount_value DESC"
 		}
 	} else {
 		// Default sort
-		query += " ORDER BY timestamp DESC"
+		query += " ORDER BY t.timestamp DESC"
 	}
 
 	// Apply pagination
@@ -512,13 +514,14 @@ func (db *DB) GetAllTransactionsWithSort(platform string, filter TransactionFilt
 
 	query := fmt.Sprintf(`
 		SELECT 
-			id, account_id, timestamp, title, icon, avatar, subtitle,
-			amount_currency, amount_value, amount_fraction, status,
-			action_type, action_payload, cash_account_number, hidden, deleted,
-			actions, dividend_per_share, taxes, total, shares, share_price,
-			fees, amount, isin, quantity, transaction_type, metadata
-		FROM %s
-		WHERE (subtitle IS NULL OR subtitle != 'Échec du plan d''épargne')
+			t.id, t.account_id, t.timestamp, t.title, t.icon, t.avatar, t.subtitle,
+			t.amount_currency, t.amount_value, t.amount_fraction, t.status,
+			t.action_type, t.action_payload, t.cash_account_number, t.hidden, t.deleted,
+			t.actions, t.dividend_per_share, t.taxes, t.total, t.shares, t.share_price,
+			t.fees, t.amount, t.isin, t.quantity, t.transaction_type, t.metadata
+		FROM %s t
+		LEFT JOIN assets a ON t.isin = a.isin
+		WHERE (t.subtitle IS NULL OR t.subtitle != 'Échec du plan d''épargne')
 	`, tableName)
 
 	args := []interface{}{}
@@ -527,44 +530,45 @@ func (db *DB) GetAllTransactionsWithSort(platform string, filter TransactionFilt
 	// Apply filters
 	if filter.StartDate != "" {
 		argCount++
-		query += fmt.Sprintf(" AND timestamp >= $%d", argCount)
+		query += fmt.Sprintf(" AND t.timestamp >= $%d", argCount)
 		args = append(args, filter.StartDate)
 	}
 
 	if filter.EndDate != "" {
 		argCount++
-		query += fmt.Sprintf(" AND timestamp <= $%d", argCount)
+		query += fmt.Sprintf(" AND t.timestamp <= $%d", argCount)
 		args = append(args, filter.EndDate)
 	}
 
 	if filter.ISIN != "" {
 		argCount++
-		query += fmt.Sprintf(" AND isin = $%d", argCount)
-		args = append(args, filter.ISIN)
+		// Search by ISIN (case-insensitive partial match) OR asset name (case-insensitive partial match)
+		query += fmt.Sprintf(" AND (LOWER(t.isin) LIKE LOWER($%d) OR LOWER(a.name) LIKE LOWER($%d))", argCount, argCount)
+		args = append(args, "%"+filter.ISIN+"%")
 	}
 
 	if filter.TransactionType != "" {
 		argCount++
-		query += fmt.Sprintf(" AND transaction_type = $%d", argCount)
+		query += fmt.Sprintf(" AND t.transaction_type = $%d", argCount)
 		args = append(args, filter.TransactionType)
 	}
 
 	// Apply sorting
 	if sortBy == "timestamp" {
 		if sortOrder == "asc" {
-			query += " ORDER BY timestamp ASC"
+			query += " ORDER BY t.timestamp ASC"
 		} else {
-			query += " ORDER BY timestamp DESC"
+			query += " ORDER BY t.timestamp DESC"
 		}
 	} else if sortBy == "amount" {
 		if sortOrder == "asc" {
-			query += " ORDER BY amount_value ASC"
+			query += " ORDER BY t.amount_value ASC"
 		} else {
-			query += " ORDER BY amount_value DESC"
+			query += " ORDER BY t.amount_value DESC"
 		}
 	} else {
 		// Default sort
-		query += " ORDER BY timestamp DESC"
+		query += " ORDER BY t.timestamp DESC"
 	}
 
 	// Don't apply pagination here - let the handler do it for combined results
@@ -687,38 +691,44 @@ func (db *DB) DeleteTransaction(id string, platform string) error {
 func (db *DB) CountTransactions(platform string, filter TransactionFilter) (int, error) {
 	tableName := getTransactionTableName(platform)
 
-	query := fmt.Sprintf(`SELECT COUNT(*) FROM %s WHERE (subtitle IS NULL OR subtitle != 'Échec du plan d''épargne')`, tableName)
+	query := fmt.Sprintf(`
+		SELECT COUNT(*) 
+		FROM %s t
+		LEFT JOIN assets a ON t.isin = a.isin
+		WHERE (t.subtitle IS NULL OR t.subtitle != 'Échec du plan d''épargne')
+	`, tableName)
 
 	args := []interface{}{}
 	argCount := 0
 
 	if filter.AccountID != "" {
 		argCount++
-		query += fmt.Sprintf(" AND account_id = $%d", argCount)
+		query += fmt.Sprintf(" AND t.account_id = $%d", argCount)
 		args = append(args, filter.AccountID)
 	}
 
 	if filter.StartDate != "" {
 		argCount++
-		query += fmt.Sprintf(" AND timestamp >= $%d", argCount)
+		query += fmt.Sprintf(" AND t.timestamp >= $%d", argCount)
 		args = append(args, filter.StartDate)
 	}
 
 	if filter.EndDate != "" {
 		argCount++
-		query += fmt.Sprintf(" AND timestamp <= $%d", argCount)
+		query += fmt.Sprintf(" AND t.timestamp <= $%d", argCount)
 		args = append(args, filter.EndDate)
 	}
 
 	if filter.ISIN != "" {
 		argCount++
-		query += fmt.Sprintf(" AND isin = $%d", argCount)
-		args = append(args, filter.ISIN)
+		// Search by ISIN (case-insensitive partial match) OR asset name (case-insensitive partial match)
+		query += fmt.Sprintf(" AND (LOWER(t.isin) LIKE LOWER($%d) OR LOWER(a.name) LIKE LOWER($%d))", argCount, argCount)
+		args = append(args, "%"+filter.ISIN+"%")
 	}
 
 	if filter.TransactionType != "" {
 		argCount++
-		query += fmt.Sprintf(" AND transaction_type = $%d", argCount)
+		query += fmt.Sprintf(" AND t.transaction_type = $%d", argCount)
 		args = append(args, filter.TransactionType)
 	}
 
