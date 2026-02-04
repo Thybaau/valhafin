@@ -115,8 +115,10 @@ export default function Dashboard() {
                   {((performance?.realized_gains || 0) + (performance?.unrealized_gains || 0)) >= 0 ? '+' : ''}
                   {formatCurrency((performance?.realized_gains || 0) + (performance?.unrealized_gains || 0))}
                 </p>
-                <p className="text-xs text-text-muted mt-1">
+                <p className="text-xs text-text-muted mt-2">
                   Non réalisés: {formatCurrency(performance?.unrealized_gains || 0)}
+                  <br />
+                  Réalisés: {formatCurrency(performance?.realized_gains || 0)}
                 </p>
               </>
             )}
