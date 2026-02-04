@@ -1431,6 +1431,8 @@ func (h *Handler) UpdateSingleAssetPrice(w http.ResponseWriter, r *http.Request)
 type AssetPosition struct {
 	ISIN              string     `json:"isin"`
 	Name              string     `json:"name"`
+	Symbol            string     `json:"symbol,omitempty"`
+	SymbolVerified    bool       `json:"symbol_verified"`
 	Quantity          float64    `json:"quantity"`
 	AverageBuyPrice   float64    `json:"average_buy_price"`
 	CurrentPrice      float64    `json:"current_price"`
@@ -1486,16 +1488,24 @@ func (h *Handler) GetAssetsHandler(w http.ResponseWriter, r *http.Request) {
 				asset, err := h.DB.GetAssetByISIN(isin)
 				assetName := "Unknown"
 				currency := "EUR"
+				symbol := ""
+				symbolVerified := false
 				if err == nil {
 					assetName = asset.Name
 					currency = asset.Currency
+					if asset.Symbol != nil {
+						symbol = *asset.Symbol
+					}
+					symbolVerified = asset.SymbolVerified
 				}
 
 				positionsByISIN[isin] = &AssetPosition{
-					ISIN:      isin,
-					Name:      assetName,
-					Currency:  currency,
-					Purchases: []Purchase{},
+					ISIN:           isin,
+					Name:           assetName,
+					Symbol:         symbol,
+					SymbolVerified: symbolVerified,
+					Currency:       currency,
+					Purchases:      []Purchase{},
 				}
 			}
 

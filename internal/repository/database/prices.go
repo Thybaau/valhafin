@@ -49,7 +49,7 @@ func (db *DB) GetAssetByISIN(isin string) (*models.Asset, error) {
 	var asset models.Asset
 
 	query := `
-		SELECT isin, name, symbol, type, currency, last_updated
+		SELECT isin, name, symbol, symbol_verified, type, currency, last_updated
 		FROM assets
 		WHERE isin = $1
 	`
@@ -67,7 +67,7 @@ func (db *DB) GetAllAssets() ([]models.Asset, error) {
 	var assets []models.Asset
 
 	query := `
-		SELECT isin, name, symbol, type, currency, last_updated
+		SELECT isin, name, symbol, symbol_verified, type, currency, last_updated
 		FROM assets
 		ORDER BY name
 	`
@@ -85,7 +85,7 @@ func (db *DB) GetAssetsByType(assetType string) ([]models.Asset, error) {
 	var assets []models.Asset
 
 	query := `
-		SELECT isin, name, symbol, type, currency, last_updated
+		SELECT isin, name, symbol, symbol_verified, type, currency, last_updated
 		FROM assets
 		WHERE type = $1
 		ORDER BY name
