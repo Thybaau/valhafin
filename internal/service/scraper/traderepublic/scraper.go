@@ -1,6 +1,7 @@
 package traderepublic
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -107,6 +108,12 @@ func (s *Scraper) FetchTransactionsWithToken(sessionToken string, lastSync *time
 	// Convert timeline transactions to our Transaction model
 	transactions := s.convertTimelineTransactions(timelineTransactions, wsClient)
 
+	// Fetch and store symbols for all unique ISINs
+	if err := s.fetchAndStoreSymbols(transactions, wsClient); err != nil {
+		log.Printf("WARNING: Failed to fetch symbols: %v", err)
+		// Don't fail the sync, just log the warning
+	}
+
 	// Filter by lastSync if provided (incremental sync)
 	if lastSync != nil {
 		filtered := make([]models.Transaction, 0)
@@ -121,6 +128,75 @@ func (s *Scraper) FetchTransactionsWithToken(sessionToken string, lastSync *time
 	}
 
 	return transactions, nil
+}
+
+// fetchAndStoreSymbols fetches instrument details for all unique ISINs and stores symbols
+func (s *Scraper) fetchAndStoreSymbols(transactions []models.Transaction, wsClient *WebSocketClient) error {
+	// Collect unique ISINs
+	uniqueISINs := make(map[string]bool)
+	for _, tx := range transactions {
+		if tx.ISIN != nil && *tx.ISIN != "" {
+			uniqueISINs[*tx.ISIN] = true
+		}
+	}
+
+	log.Printf("DEBUG: Fetching symbols for %d unique ISINs", len(uniqueISINs))
+
+	// Fetch instrument details for each ISIN
+	for isin := range uniqueISINs {
+		details, err := wsClient.FetchInstrumentDetails(isin)
+		if err != nil {
+			log.Printf("WARNING: Failed to fetch instrument details for ISIN %s: %v", isin, err)
+			continue
+		}
+
+		// Extract symbol (prefer intlSymbol, fallback to homeSymbol)
+		symbol := ""
+		if intlSymbol, ok := details["intlSymbol"].(string); ok && intlSymbol != "" {
+			symbol = intlSymbol
+		} else if homeSymbol, ok := details["homeSymbol"].(string); ok && homeSymbol != "" {
+			symbol = homeSymbol
+		}
+
+		// Extract exchanges information
+		var exchanges []string
+		if exchangeIds, ok := details["exchangeIds"].([]interface{}); ok {
+			for _, exch := range exchangeIds {
+				if exchStr, ok := exch.(string); ok {
+					exchanges = append(exchanges, exchStr)
+				}
+			}
+		}
+
+		// Extract asset name
+		assetName := ""
+		if name, ok := details["shortName"].(string); ok && name != "" {
+			assetName = name
+		} else if name, ok := details["title"].(string); ok && name != "" {
+			assetName = name
+		}
+
+		if symbol != "" {
+			log.Printf("DEBUG: Found symbol %s for ISIN %s (exchanges: %v)", symbol, isin, exchanges)
+
+			// Store symbol and metadata in transaction
+			metadata := map[string]interface{}{
+				"symbol":    symbol,
+				"exchanges": exchanges,
+				"name":      assetName,
+			}
+			metadataJSON, _ := json.Marshal(metadata)
+			metadataStr := string(metadataJSON)
+
+			for i := range transactions {
+				if transactions[i].ISIN != nil && *transactions[i].ISIN == isin {
+					transactions[i].Metadata = &metadataStr
+				}
+			}
+		}
+	}
+
+	return nil
 }
 
 // convertTimelineTransactions converts WebSocket timeline transactions to our Transaction model

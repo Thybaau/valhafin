@@ -501,6 +501,11 @@ func (h *Handler) CompleteSyncHandler(w http.ResponseWriter, r *http.Request) {
 		transactionsStored = len(transactions)
 	}
 
+	// Resolve symbols for assets with Yahoo Finance
+	log.Printf("INFO: Resolving symbols for assets...")
+	symbolsResolved := h.resolveAssetSymbols()
+	log.Printf("INFO: Resolved %d symbols", symbolsResolved)
+
 	// Update last sync timestamp
 	now := time.Now()
 	if err := h.DB.UpdateAccountLastSync(account.ID, now); err != nil {
@@ -510,7 +515,8 @@ func (h *Handler) CompleteSyncHandler(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, map[string]interface{}{
 		"success":            true,
 		"transactions_added": transactionsStored,
-		"message":            fmt.Sprintf("Successfully synchronized %d transactions", transactionsStored),
+		"symbols_resolved":   symbolsResolved,
+		"message":            fmt.Sprintf("Successfully synchronized %d transactions and resolved %d symbols", transactionsStored, symbolsResolved),
 	})
 }
 
@@ -1560,4 +1566,192 @@ func (h *Handler) GetAssetsHandler(w http.ResponseWriter, r *http.Request) {
 	})
 
 	respondJSON(w, http.StatusOK, assets)
+}
+
+// SymbolSearchHandler searches for symbols on Yahoo Finance
+func (h *Handler) SymbolSearchHandler(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query().Get("query")
+	if query == "" {
+		respondError(w, http.StatusBadRequest, "INVALID_QUERY", "Query parameter is required", nil)
+		return
+	}
+
+	// Call Yahoo Finance search API
+	yahooService, ok := h.PriceService.(*price.YahooFinanceService)
+	if !ok {
+		respondError(w, http.StatusInternalServerError, "SERVICE_ERROR", "Price service is not Yahoo Finance", nil)
+		return
+	}
+
+	results, err := yahooService.SearchSymbol(query)
+	if err != nil {
+		log.Printf("ERROR: Yahoo Finance search failed: %v", err)
+		respondError(w, http.StatusBadRequest, "SEARCH_ERROR", err.Error(), nil)
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"results": results,
+	})
+}
+
+// resolveAssetSymbols resolves Yahoo Finance symbols for assets that don't have verified symbols
+func (h *Handler) resolveAssetSymbols() int {
+	yahooService, ok := h.PriceService.(*price.YahooFinanceService)
+	if !ok {
+		log.Printf("WARNING: Price service is not Yahoo Finance, skipping symbol resolution")
+		return 0
+	}
+
+	// Get all assets without verified symbols
+	query := `
+		SELECT isin, name, symbol 
+		FROM assets 
+		WHERE (symbol_verified = false OR symbol_verified IS NULL)
+		AND isin IS NOT NULL
+	`
+
+	type AssetInfo struct {
+		ISIN   string  `db:"isin"`
+		Name   string  `db:"name"`
+		Symbol *string `db:"symbol"`
+	}
+
+	var assets []AssetInfo
+	if err := h.DB.Select(&assets, query); err != nil {
+		log.Printf("ERROR: Failed to get assets for symbol resolution: %v", err)
+		return 0
+	}
+
+	log.Printf("INFO: Found %d assets to resolve symbols for", len(assets))
+
+	resolved := 0
+	for _, asset := range assets {
+		// Get metadata from transactions to extract exchange info
+		var metadata struct {
+			Symbol    string   `json:"symbol"`
+			Exchanges []string `json:"exchanges"`
+			Name      string   `json:"name"`
+		}
+
+		// Try to get metadata from a transaction with this ISIN
+		metadataQuery := `
+			SELECT metadata 
+			FROM transactions_traderepublic 
+			WHERE isin = $1 AND metadata IS NOT NULL 
+			LIMIT 1
+		`
+		var metadataJSON *string
+		err := h.DB.Get(&metadataJSON, metadataQuery, asset.ISIN)
+		if err == nil && metadataJSON != nil {
+			if err := json.Unmarshal([]byte(*metadataJSON), &metadata); err != nil {
+				log.Printf("WARNING: Failed to parse metadata for ISIN %s: %v", asset.ISIN, err)
+			}
+		}
+
+		// Use symbol from metadata or from asset
+		symbolToResolve := metadata.Symbol
+		if symbolToResolve == "" && asset.Symbol != nil {
+			symbolToResolve = *asset.Symbol
+		}
+
+		if symbolToResolve == "" {
+			log.Printf("WARNING: No symbol found for ISIN %s, skipping", asset.ISIN)
+			continue
+		}
+
+		// Use asset name from metadata or database
+		assetName := metadata.Name
+		if assetName == "" {
+			assetName = asset.Name
+		}
+
+		// Resolve symbol with Yahoo Finance
+		resolvedSymbol, verified, err := yahooService.ResolveSymbolWithExchange(
+			symbolToResolve,
+			metadata.Exchanges,
+			assetName,
+		)
+
+		if err != nil {
+			log.Printf("WARNING: Failed to resolve symbol for ISIN %s (%s): %v", asset.ISIN, symbolToResolve, err)
+			continue
+		}
+
+		// Update asset with resolved symbol
+		updateQuery := `
+			UPDATE assets 
+			SET symbol = $1, symbol_verified = $2, last_updated = NOW()
+			WHERE isin = $3
+		`
+		if _, err := h.DB.Exec(updateQuery, resolvedSymbol, verified, asset.ISIN); err != nil {
+			log.Printf("ERROR: Failed to update symbol for ISIN %s: %v", asset.ISIN, err)
+			continue
+		}
+
+		log.Printf("INFO: Resolved symbol for %s: %s → %s (verified: %v)", asset.ISIN, symbolToResolve, resolvedSymbol, verified)
+		resolved++
+
+		// Small delay to be respectful to Yahoo Finance
+		time.Sleep(200 * time.Millisecond)
+	}
+
+	return resolved
+}
+
+// ResolveAllSymbolsHandler manually triggers symbol resolution for all assets
+func (h *Handler) ResolveAllSymbolsHandler(w http.ResponseWriter, r *http.Request) {
+	log.Printf("INFO: Manual symbol resolution triggered")
+
+	resolved := h.resolveAssetSymbols()
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"success":          true,
+		"symbols_resolved": resolved,
+		"message":          fmt.Sprintf("Successfully resolved %d symbols", resolved),
+	})
+}
+
+// UpdateAssetSymbolHandler updates the symbol for an asset
+func (h *Handler) UpdateAssetSymbolHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	isin := vars["isin"]
+
+	if isin == "" {
+		respondError(w, http.StatusBadRequest, "INVALID_ISIN", "ISIN is required", nil)
+		return
+	}
+
+	// Parse request body
+	var req struct {
+		Symbol         string `json:"symbol"`
+		SymbolVerified bool   `json:"symbol_verified"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "INVALID_REQUEST", "Invalid request body", err.Error())
+		return
+	}
+
+	// Update asset symbol in database
+	query := `
+		UPDATE assets 
+		SET symbol = $1, symbol_verified = $2, last_updated = NOW()
+		WHERE isin = $3
+		RETURNING isin, name, symbol, symbol_verified, type, currency, last_updated
+	`
+
+	var asset models.Asset
+	err := h.DB.Get(&asset, query, req.Symbol, req.SymbolVerified, isin)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			respondError(w, http.StatusNotFound, "ASSET_NOT_FOUND", "Asset not found", nil)
+			return
+		}
+		log.Printf("ERROR: Failed to update asset symbol: %v", err)
+		respondError(w, http.StatusInternalServerError, "UPDATE_FAILED", "Failed to update asset symbol", err.Error())
+		return
+	}
+
+	respondJSON(w, http.StatusOK, asset)
 }

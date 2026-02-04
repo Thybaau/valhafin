@@ -220,6 +220,18 @@ var migrations = []Migration{
 			DROP TABLE IF EXISTS schema_migrations CASCADE;
 		`,
 	},
+	{
+		Version: 8,
+		Name:    "add_symbol_verified_to_assets",
+		Up: `
+			ALTER TABLE assets ADD COLUMN IF NOT EXISTS symbol_verified BOOLEAN DEFAULT FALSE;
+			CREATE INDEX IF NOT EXISTS idx_assets_symbol_verified ON assets(symbol_verified);
+		`,
+		Down: `
+			DROP INDEX IF EXISTS idx_assets_symbol_verified;
+			ALTER TABLE assets DROP COLUMN IF EXISTS symbol_verified;
+		`,
+	},
 }
 
 // RunMigrations executes all pending migrations

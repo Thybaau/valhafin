@@ -8,12 +8,13 @@ import (
 
 // Asset represents a financial asset (stock, ETF, crypto)
 type Asset struct {
-	ISIN        string    `json:"isin" db:"isin"`
-	Name        string    `json:"name" db:"name"`
-	Symbol      *string   `json:"symbol,omitempty" db:"symbol"`
-	Type        string    `json:"type" db:"type"` // "stock", "etf", "crypto"
-	Currency    string    `json:"currency" db:"currency"`
-	LastUpdated time.Time `json:"last_updated" db:"last_updated"`
+	ISIN           string    `json:"isin" db:"isin"`
+	Name           string    `json:"name" db:"name"`
+	Symbol         *string   `json:"symbol,omitempty" db:"symbol"`
+	SymbolVerified bool      `json:"symbol_verified" db:"symbol_verified"`
+	Type           string    `json:"type" db:"type"` // "stock", "etf", "crypto"
+	Currency       string    `json:"currency" db:"currency"`
+	LastUpdated    time.Time `json:"last_updated" db:"last_updated"`
 }
 
 // Validate validates the Asset model

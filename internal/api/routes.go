@@ -36,7 +36,7 @@ func SetupRoutesWithVersion(db *database.DB, encryptionService *encryption.Encry
 	// Create sync service
 	syncService := sync.NewService(db, scraperFactory, encryptionService)
 
-	// Create price service
+	// Create price service (Yahoo Finance)
 	priceService := price.NewYahooFinanceService(db)
 
 	// Create performance service
@@ -98,6 +98,11 @@ func SetupRoutesWithVersion(db *database.DB, encryptionService *encryption.Encry
 	api.HandleFunc("/assets/{isin}/price", handler.GetAssetPriceHandler).Methods("GET")
 	api.HandleFunc("/assets/{isin}/history", handler.GetAssetPriceHistoryHandler).Methods("GET")
 	api.HandleFunc("/assets/{isin}/price/update", handler.UpdateSingleAssetPrice).Methods("POST")
+	api.HandleFunc("/assets/{isin}/symbol", handler.UpdateAssetSymbolHandler).Methods("PUT")
+	api.HandleFunc("/assets/symbols/resolve", handler.ResolveAllSymbolsHandler).Methods("POST")
+
+	// Symbol search routes
+	api.HandleFunc("/symbols/search", handler.SymbolSearchHandler).Methods("GET")
 
 	// Return router and services
 	services := &Services{

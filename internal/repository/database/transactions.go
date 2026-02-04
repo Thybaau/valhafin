@@ -29,12 +29,35 @@ func (db *DB) CreateTransaction(transaction *models.Transaction, platform string
 	var isinValue interface{}
 	if transaction.ISIN != nil && *transaction.ISIN != "" {
 		isinValue = *transaction.ISIN
-		// Create asset if it doesn't exist
+
+		// Extract symbol and name from metadata if available
+		var symbol *string
+		var assetName string = "Unknown"
+		if transaction.Metadata != nil && *transaction.Metadata != "" {
+			var metadata map[string]interface{}
+			if err := json.Unmarshal([]byte(*transaction.Metadata), &metadata); err == nil {
+				if symbolStr, ok := metadata["symbol"].(string); ok && symbolStr != "" {
+					symbol = &symbolStr
+				}
+				if nameStr, ok := metadata["name"].(string); ok && nameStr != "" {
+					assetName = nameStr
+				}
+			}
+		}
+
+		// Fallback to transaction title if name not in metadata
+		if assetName == "Unknown" && transaction.Title != "" {
+			assetName = transaction.Title
+		}
+
+		// Create asset if it doesn't exist, or update symbol and name if provided
 		_, err := db.Exec(`
-			INSERT INTO assets (isin, name, type, currency)
-			VALUES ($1, $2, $3, $4)
-			ON CONFLICT (isin) DO NOTHING
-		`, *transaction.ISIN, "Unknown", "stock", "EUR")
+			INSERT INTO assets (isin, name, symbol, type, currency)
+			VALUES ($1, $2, $3, $4, $5)
+			ON CONFLICT (isin) DO UPDATE
+			SET symbol = COALESCE(EXCLUDED.symbol, assets.symbol),
+			    name = CASE WHEN assets.name = 'Unknown' THEN EXCLUDED.name ELSE assets.name END
+		`, *transaction.ISIN, assetName, symbol, "stock", "EUR")
 		if err != nil {
 			return fmt.Errorf("failed to create asset for ISIN %s: %w", *transaction.ISIN, err)
 		}
@@ -120,23 +143,58 @@ func (db *DB) CreateTransactionsBatch(transactions []models.Transaction, platfor
 	defer tx.Rollback()
 
 	// First, ensure all ISINs exist in the assets table
-	uniqueISINs := make(map[string]bool)
+	// Also extract symbols and names from transaction metadata
+	type assetInfo struct {
+		isin   string
+		name   string
+		symbol *string
+	}
+	assetsToCreate := make(map[string]assetInfo)
+
 	for _, transaction := range transactions {
 		if transaction.ISIN != nil && *transaction.ISIN != "" {
-			uniqueISINs[*transaction.ISIN] = true
+			isin := *transaction.ISIN
+
+			// Extract symbol and name from metadata if available
+			var symbol *string
+			var assetName string = "Unknown"
+			if transaction.Metadata != nil && *transaction.Metadata != "" {
+				// Parse metadata JSON to extract symbol and name
+				var metadata map[string]interface{}
+				if err := json.Unmarshal([]byte(*transaction.Metadata), &metadata); err == nil {
+					if symbolStr, ok := metadata["symbol"].(string); ok && symbolStr != "" {
+						symbol = &symbolStr
+					}
+					if nameStr, ok := metadata["name"].(string); ok && nameStr != "" {
+						assetName = nameStr
+					}
+				}
+			}
+
+			// Fallback to transaction title if name not in metadata
+			if assetName == "Unknown" && transaction.Title != "" {
+				assetName = transaction.Title
+			}
+
+			// Store asset info (symbol and name will be updated if found in later transactions)
+			if existing, exists := assetsToCreate[isin]; !exists || (symbol != nil && existing.symbol == nil) {
+				assetsToCreate[isin] = assetInfo{isin: isin, name: assetName, symbol: symbol}
+			}
 		}
 	}
 
 	// Create assets for ISINs that don't exist yet
-	for isin := range uniqueISINs {
-		// Try to insert the asset, ignore if it already exists
+	for _, info := range assetsToCreate {
+		// Try to insert the asset, or update symbol and name if it already exists
 		_, err := tx.Exec(`
-			INSERT INTO assets (isin, name, type, currency)
-			VALUES ($1, $2, $3, $4)
-			ON CONFLICT (isin) DO NOTHING
-		`, isin, "Unknown", "stock", "EUR")
+			INSERT INTO assets (isin, name, symbol, type, currency)
+			VALUES ($1, $2, $3, $4, $5)
+			ON CONFLICT (isin) DO UPDATE
+			SET symbol = COALESCE(EXCLUDED.symbol, assets.symbol),
+			    name = CASE WHEN assets.name = 'Unknown' THEN EXCLUDED.name ELSE assets.name END
+		`, info.isin, info.name, info.symbol, "stock", "EUR")
 		if err != nil {
-			return fmt.Errorf("failed to create asset for ISIN %s: %w", isin, err)
+			return fmt.Errorf("failed to create asset for ISIN %s: %w", info.isin, err)
 		}
 	}
 

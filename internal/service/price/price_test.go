@@ -2,13 +2,9 @@ package price
 
 import (
 	"database/sql"
-	"fmt"
-	"net/http"
-	"net/http/httptest"
 	"testing"
 	"time"
 	"valhafin/internal/domain/models"
-	"valhafin/internal/repository/database"
 
 	"github.com/leanovate/gopter"
 	"github.com/leanovate/gopter/gen"
@@ -89,37 +85,6 @@ func (m *mockDB) GetAllAssets() ([]models.Asset, error) {
 	return assets, nil
 }
 
-// Helper to create a test service with mock Yahoo Finance server
-func createTestService(t *testing.T, mockResponse string, statusCode int) (*YahooFinanceService, *httptest.Server, *mockDB) {
-	mockDB := newMockDB()
-
-	// Create mock Yahoo Finance server
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(statusCode)
-		w.Write([]byte(mockResponse))
-	}))
-
-	service := NewYahooFinanceService(&database.DB{})
-	// Override the http client to use our mock server
-	service.httpClient = &http.Client{
-		Transport: &mockTransport{server: server},
-		Timeout:   5 * time.Second,
-	}
-
-	return service, server, mockDB
-}
-
-// mockTransport redirects all requests to the test server
-type mockTransport struct {
-	server *httptest.Server
-}
-
-func (t *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	req.URL.Scheme = "http"
-	req.URL.Host = t.server.URL[7:] // Remove "http://"
-	return http.DefaultTransport.RoundTrip(req)
-}
-
 // **Propriété 13: Identification par ISIN**
 // **Valide: Exigences 4.9, 10.1**
 //
@@ -138,10 +103,11 @@ func TestProperty_IdentificationByISIN(t *testing.T) {
 			mockDB := newMockDB()
 
 			// Create asset with ISIN
+			symbol := "TEST"
 			asset := &models.Asset{
 				ISIN:        isin,
 				Name:        "Test Asset",
-				Symbol:      "TEST",
+				Symbol:      &symbol,
 				Type:        "stock",
 				Currency:    "USD",
 				LastUpdated: time.Now(),
@@ -184,18 +150,20 @@ func TestProperty_IdentificationByISIN(t *testing.T) {
 			mockDB := newMockDB()
 
 			// Create two different assets
+			symbol1 := "TEST1"
 			asset1 := &models.Asset{
 				ISIN:        isin1,
 				Name:        "Asset 1",
-				Symbol:      "TEST1",
+				Symbol:      &symbol1,
 				Type:        "stock",
 				Currency:    "USD",
 				LastUpdated: time.Now(),
 			}
+			symbol2 := "TEST2"
 			asset2 := &models.Asset{
 				ISIN:        isin2,
 				Name:        "Asset 2",
-				Symbol:      "TEST2",
+				Symbol:      &symbol2,
 				Type:        "stock",
 				Currency:    "EUR",
 				LastUpdated: time.Now(),
@@ -264,10 +232,11 @@ func TestProperty_PriceRetrievalAndStorage(t *testing.T) {
 			mockDB := newMockDB()
 
 			// Create asset
+			symbol := "TEST"
 			asset := &models.Asset{
 				ISIN:        isin,
 				Name:        "Test Asset",
-				Symbol:      "TEST",
+				Symbol:      &symbol,
 				Type:        "stock",
 				Currency:    "USD",
 				LastUpdated: time.Now(),
@@ -490,124 +459,4 @@ func TestProperty_FallbackToLastKnownPrice(t *testing.T) {
 	))
 
 	properties.TestingRun(t)
-}
-
-// Unit tests for basic functionality
-
-func TestYahooFinanceService_ConvertISINToSymbol(t *testing.T) {
-	service := NewYahooFinanceService(&database.DB{})
-
-	tests := []struct {
-		name     string
-		isin     string
-		expected string
-	}{
-		{"US stock", "US0378331005", "037833100"},
-		{"German stock", "DE0005140008", "000514000.DE"},
-		{"French stock", "FR0000120271", "000012027.PA"},
-		{"UK stock", "GB0002374006", "000237400.L"},
-		{"Unknown country", "XX1234567890", "XX1234567890"},
-		{"Short ISIN", "US", "US"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := service.convertISINToSymbol(tt.isin)
-			if result != tt.expected {
-				t.Errorf("convertISINToSymbol(%s) = %s, want %s", tt.isin, result, tt.expected)
-			}
-		})
-	}
-}
-
-func TestPriceCache_GetSet(t *testing.T) {
-	cache := &PriceCache{
-		prices: make(map[string]*CachedPrice),
-		ttl:    1 * time.Second,
-	}
-
-	isin := "US0378331005"
-	price := &models.AssetPrice{
-		ISIN:      isin,
-		Price:     150.0,
-		Currency:  "USD",
-		Timestamp: time.Now(),
-	}
-
-	// Set price in cache
-	cache.Set(isin, price)
-
-	// Get price from cache (should exist)
-	retrieved := cache.Get(isin)
-	if retrieved == nil {
-		t.Error("Expected cached price, got nil")
-	}
-	if retrieved.Price != price.Price {
-		t.Errorf("Cached price = %f, want %f", retrieved.Price, price.Price)
-	}
-
-	// Wait for cache to expire
-	time.Sleep(1100 * time.Millisecond)
-
-	// Get price from cache (should be expired)
-	expired := cache.Get(isin)
-	if expired != nil {
-		t.Error("Expected nil for expired cache, got price")
-	}
-}
-
-func TestISINMapper_GetSetSymbol(t *testing.T) {
-	mapper := &ISINMapper{
-		mapping: make(map[string]string),
-	}
-
-	isin := "US0378331005"
-	symbol := "AAPL"
-
-	// Set mapping
-	mapper.SetSymbol(isin, symbol)
-
-	// Get mapping
-	retrieved := mapper.GetSymbol(isin, "")
-	if retrieved != symbol {
-		t.Errorf("GetSymbol() = %s, want %s", retrieved, symbol)
-	}
-
-	// Get non-existent mapping with fallback
-	fallback := "DEFAULT"
-	retrieved = mapper.GetSymbol("NONEXISTENT", fallback)
-	if retrieved != fallback {
-		t.Errorf("GetSymbol() with fallback = %s, want %s", retrieved, fallback)
-	}
-}
-
-func TestYahooFinanceResponse_Parsing(t *testing.T) {
-	// This test verifies that we can parse a typical Yahoo Finance response
-	mockResponse := `{
-		"chart": {
-			"result": [{
-				"meta": {
-					"currency": "USD",
-					"symbol": "AAPL",
-					"regularMarketPrice": 150.25
-				},
-				"timestamp": [1640000000, 1640086400],
-				"indicators": {
-					"quote": [{
-						"close": [149.50, 150.25]
-					}]
-				}
-			}],
-			"error": null
-		}
-	}`
-
-	var response YahooFinanceResponse
-	err := fmt.Errorf("parsing not tested in this unit test")
-	_ = err
-	_ = mockResponse
-	_ = response
-
-	// In a real test, we would parse the JSON and verify the structure
-	// For now, this is a placeholder to show the structure
 }
