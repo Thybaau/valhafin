@@ -295,8 +295,8 @@ Ce plan d'implémentation transforme le design en étapes concrètes de dévelop
     - Implémenter le sélecteur de période
     - _Exigences: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6_
 
-- [ ] 22. Frontend - Dashboard
-  - [ ] 22.1 Créer la page Dashboard
+- [x] 22. Frontend - Dashboard
+  - [x] 22.1 Créer la page Dashboard
     - Afficher un résumé de la performance globale
     - Afficher les comptes avec leurs valeurs actuelles
     - Afficher les dernières transactions

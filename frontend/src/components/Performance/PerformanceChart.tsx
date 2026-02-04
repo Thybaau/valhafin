@@ -9,20 +9,16 @@ interface PerformanceChartProps {
 export default function PerformanceChart({ data, isLoading }: PerformanceChartProps) {
   if (isLoading) {
     return (
-      <div className="card">
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent-primary"></div>
-        </div>
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent-primary"></div>
       </div>
     )
   }
 
   if (!data || data.length === 0) {
     return (
-      <div className="card">
-        <div className="text-center py-12 text-text-muted">
-          Aucune donnée de performance disponible
-        </div>
+      <div className="text-center py-12 text-text-muted">
+        Aucune donnée de performance disponible
       </div>
     )
   }
@@ -63,39 +59,37 @@ export default function PerformanceChart({ data, isLoading }: PerformanceChartPr
   }
 
   return (
-    <div className="card">
-      <ResponsiveContainer width="100%" height={400}>
-        <LineChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-          <defs>
-            <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.8} />
-              <stop offset="95%" stopColor="#3B82F6" stopOpacity={0.1} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
-          <XAxis
-            dataKey="date"
-            tickFormatter={formatDate}
-            stroke="#9CA3AF"
-            style={{ fontSize: '12px' }}
-          />
-          <YAxis
-            tickFormatter={formatValue}
-            stroke="#9CA3AF"
-            style={{ fontSize: '12px' }}
-          />
-          <Tooltip content={<CustomTooltip />} />
-          <Line
-            type="monotone"
-            dataKey="value"
-            stroke="#3B82F6"
-            strokeWidth={2}
-            dot={false}
-            activeDot={{ r: 6, fill: '#3B82F6' }}
-            fill="url(#colorValue)"
-          />
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
+    <ResponsiveContainer width="100%" height={300}>
+      <LineChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+        <defs>
+          <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.8} />
+            <stop offset="95%" stopColor="#3B82F6" stopOpacity={0.1} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
+        <XAxis
+          dataKey="date"
+          tickFormatter={formatDate}
+          stroke="#9CA3AF"
+          style={{ fontSize: '12px' }}
+        />
+        <YAxis
+          tickFormatter={formatValue}
+          stroke="#9CA3AF"
+          style={{ fontSize: '12px' }}
+        />
+        <Tooltip content={<CustomTooltip />} />
+        <Line
+          type="monotone"
+          dataKey="value"
+          stroke="#3B82F6"
+          strokeWidth={2}
+          dot={false}
+          activeDot={{ r: 6, fill: '#3B82F6' }}
+          fill="url(#colorValue)"
+        />
+      </LineChart>
+    </ResponsiveContainer>
   )
 }
