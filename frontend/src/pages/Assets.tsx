@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   LineChart,
   Line,
@@ -46,6 +46,7 @@ interface PriceHistory {
 }
 
 export default function Assets() {
+  const queryClient = useQueryClient();
   const [selectedAsset, setSelectedAsset] = useState<AssetPosition | null>(null);
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [assetToSearch, setAssetToSearch] = useState<AssetPosition | null>(null);
@@ -144,12 +145,10 @@ export default function Assets() {
     setRefreshingAsset(isin);
     try {
       await assetsApi.refreshAssetPrices(isin);
-      // Refetch assets and price history
+      // Refetch assets
       refetch();
-      if (selectedAsset?.isin === isin) {
-        // Force refetch of price history for selected asset
-        window.location.reload();
-      }
+      // Invalidate price history cache to force refetch
+      queryClient.invalidateQueries({ queryKey: ['assetHistory', isin] });
     } catch (error) {
       console.error('Failed to refresh prices:', error);
     } finally {
@@ -536,18 +535,20 @@ export default function Assets() {
                   </td>
                   <td className="px-6 py-4 text-center">
                     <div className="flex items-center justify-center gap-2">
-                      {!asset.symbol_verified && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOpenSearchModal(asset);
-                          }}
-                          className="inline-flex items-center gap-1 px-3 py-1 text-xs bg-orange-600 text-white rounded hover:bg-orange-700"
-                        >
-                          <Search className="w-3 h-3" />
-                          Verify
-                        </button>
-                      )}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenSearchModal(asset);
+                        }}
+                        className={`inline-flex items-center gap-1 px-3 py-1 text-xs rounded transition-colors ${
+                          asset.symbol_verified
+                            ? 'bg-background-tertiary text-text-muted hover:bg-background-tertiary/70 hover:text-text-primary'
+                            : 'bg-orange-600 text-white hover:bg-orange-700'
+                        }`}
+                      >
+                        <Search className="w-3 h-3" />
+                        {asset.symbol_verified ? 'Modify' : 'Verify'}
+                      </button>
                       <button
                         onClick={(e) => handleRefreshPrices(asset.isin, e)}
                         disabled={refreshingAsset === asset.isin}
