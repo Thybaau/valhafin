@@ -122,23 +122,39 @@ export default function Assets() {
     price: point.price,
   })) || [];
 
-  // Create purchase markers
-  const purchaseMarkers = selectedAsset?.purchases.map((purchase) => {
-    const purchaseDate = new Date(purchase.date);
-    const closestPoint = chartData.find((point) => {
-      const pointDate = new Date(point.timestamp);
-      return pointDate.toDateString() === purchaseDate.toDateString();
-    });
+  // Create purchase markers - only include purchases that have corresponding chart data
+  const purchaseMarkers = selectedAsset?.purchases
+    .map((purchase) => {
+      const purchaseDate = new Date(purchase.date);
+      
+      // Find the closest point in chart data (within a few days)
+      let closestPoint = null;
+      let minDiff = Infinity;
+      
+      for (const point of chartData) {
+        const pointDate = new Date(point.timestamp);
+        const diff = Math.abs(pointDate.getTime() - purchaseDate.getTime());
+        const daysDiff = diff / (1000 * 60 * 60 * 24);
+        
+        // Only consider points within 7 days
+        if (daysDiff <= 7 && diff < minDiff) {
+          minDiff = diff;
+          closestPoint = point;
+        }
+      }
 
-    return {
-      date: new Date(purchase.date).toLocaleDateString('fr-FR', {
-        day: '2-digit',
-        month: '2-digit',
-      }),
-      price: closestPoint?.price || purchase.price,
-      quantity: purchase.quantity,
-    };
-  }) || [];
+      // Only return marker if we found a close point
+      if (closestPoint) {
+        return {
+          date: closestPoint.date,
+          price: closestPoint.price,
+          quantity: purchase.quantity,
+          originalDate: purchase.date,
+        };
+      }
+      return null;
+    })
+    .filter((marker): marker is NonNullable<typeof marker> => marker !== null) || [];
 
   return (
     <div className="min-h-screen bg-background-primary p-6">
