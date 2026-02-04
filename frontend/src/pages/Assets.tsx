@@ -10,7 +10,7 @@ import {
   ResponsiveContainer,
   ReferenceDot,
 } from 'recharts';
-import { Search, AlertCircle } from 'lucide-react';
+import { Search, AlertCircle, CheckCircle } from 'lucide-react';
 import { assetsApi } from '../services';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import ErrorMessage from '../components/common/ErrorMessage';
@@ -328,8 +328,24 @@ export default function Assets() {
                         </div>
                         <div className="text-xs text-text-muted">{asset.isin}</div>
                       </div>
-                      {!asset.symbol_verified && (
-                        <AlertCircle className="w-4 h-4 text-orange-500" />
+                      {asset.symbol_verified ? (
+                        <div className="relative group">
+                          <CheckCircle className="w-4 h-4 text-success cursor-help" />
+                          <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-10 w-48">
+                            <div className="bg-background-tertiary border border-background-primary rounded-lg px-3 py-2 text-xs text-text-primary shadow-lg">
+                              Symbole vérifié sur Yahoo Finance ({asset.symbol})
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="relative group">
+                          <AlertCircle className="w-4 h-4 text-orange-500 cursor-help" />
+                          <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-10 w-48">
+                            <div className="bg-background-tertiary border border-background-primary rounded-lg px-3 py-2 text-xs text-text-primary shadow-lg">
+                              Symbole non vérifié - Cliquez sur "Verify" pour rechercher
+                            </div>
+                          </div>
+                        </div>
                       )}
                     </div>
                   </td>
