@@ -1,0 +1,15 @@
+{
+  "enabled": true,
+  "name": "Task Summary Generator",
+  "description": "Crée automatiquement un document récapitulatif dans /docs appelé TASK_(numéro)_SUMMARY.md quand une tâche est terminée",
+  "version": "1",
+  "when": {
+    "type": "agentStop"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Crée un document récapitulatif de la tâche que tu viens de terminer dans le dossier /docs. Le fichier doit s'appeler TASK_(numéro de la prochaine tâche)_SUMMARY.md et contenir un résumé de ce qui a été accompli, les fichiers modifiés, et les points importants."
+  },
+  "workspaceFolderName": "valhafin",
+  "shortName": "task-summary-generator"
+}

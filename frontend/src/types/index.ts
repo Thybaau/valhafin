@@ -19,7 +19,7 @@ export interface Transaction {
   quantity?: number
   amount_value: number
   amount_currency: string
-  fees: number
+  fees: string | number // Can be string from API
   transaction_type: string
   status: string
 }
@@ -41,9 +41,31 @@ export interface AssetPrice {
   timestamp: string
 }
 
+export interface AssetPosition {
+  isin: string
+  name: string
+  symbol?: string
+  symbol_verified: boolean
+  quantity: number
+  average_buy_price: number
+  current_price: number
+  current_value: number
+  total_invested: number
+  unrealized_gain: number
+  unrealized_gain_pct: number
+  total_fees: number
+  currency: string
+  purchases?: Array<{
+    date: string
+    quantity: number
+    price: number
+  }>
+}
+
 export interface Performance {
   total_value: number
   total_invested: number
+  cash_balance: number
   total_fees: number
   realized_gains: number
   unrealized_gains: number
@@ -54,12 +76,13 @@ export interface Performance {
 export interface PerformancePoint {
   date: string
   value: number
+  invested: number
 }
 
 export interface ErrorResponse {
   error: {
     code: string
     message: string
-    details?: any
+    details?: Record<string, unknown>
   }
 }
