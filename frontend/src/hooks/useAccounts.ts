@@ -62,6 +62,7 @@ export function useSyncAccount() {
       // Invalider les données du compte et les transactions
       queryClient.invalidateQueries({ queryKey: accountKeys.detail(id) })
       queryClient.invalidateQueries({ queryKey: ['transactions'] })
+      queryClient.invalidateQueries({ queryKey: ['assets'] })
       queryClient.invalidateQueries({ queryKey: ['performance'] })
     },
   })
@@ -84,6 +85,7 @@ export function useCompleteSync() {
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: accountKeys.detail(id) })
       queryClient.invalidateQueries({ queryKey: ['transactions'] })
+      queryClient.invalidateQueries({ queryKey: ['assets'] })
       queryClient.invalidateQueries({ queryKey: ['performance'] })
     },
   })

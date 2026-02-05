@@ -186,12 +186,14 @@ func (db *DB) CreateTransactionsBatch(transactions []models.Transaction, platfor
 	// Create assets for ISINs that don't exist yet
 	for _, info := range assetsToCreate {
 		// Try to insert the asset, or update symbol and name if it already exists
+		// Set symbol_verified to false so that resolveAssetSymbols can process it
 		_, err := tx.Exec(`
-			INSERT INTO assets (isin, name, symbol, type, currency)
-			VALUES ($1, $2, $3, $4, $5)
+			INSERT INTO assets (isin, name, symbol, type, currency, symbol_verified)
+			VALUES ($1, $2, $3, $4, $5, false)
 			ON CONFLICT (isin) DO UPDATE
 			SET symbol = COALESCE(EXCLUDED.symbol, assets.symbol),
-			    name = CASE WHEN assets.name = 'Unknown' THEN EXCLUDED.name ELSE assets.name END
+			    name = CASE WHEN assets.name = 'Unknown' THEN EXCLUDED.name ELSE assets.name END,
+			    symbol_verified = CASE WHEN EXCLUDED.symbol IS NOT NULL THEN false ELSE assets.symbol_verified END
 		`, info.isin, info.name, info.symbol, "stock", "EUR")
 		if err != nil {
 			return fmt.Errorf("failed to create asset for ISIN %s: %w", info.isin, err)
