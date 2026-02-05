@@ -93,14 +93,30 @@ export default function Performance() {
   const { data: accounts } = useAccounts()
 
   const periods: { value: Period; label: string }[] = [
-    { value: '1m', label: '1 Mois' },
-    { value: '3m', label: '3 Mois' },
-    { value: '1y', label: '1 An' },
-    { value: 'all', label: 'Tout' },
+    { value: '1m', label: '1M' },
+    { value: '3m', label: '3M' },
+    { value: '1y', label: '1Y' },
+    { value: 'all', label: 'Max' },
   ]
 
+  // Calculate performance percentage: use the API value
+  const performancePct = performance?.performance_pct || 0
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('fr-FR', {
+      style: 'currency',
+      currency: 'EUR',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value)
+  }
+
+  const formatPercent = (value: number) => {
+    return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`
+  }
+
   return (
-    <div>
+    <div className="min-h-screen bg-background-primary">
       <Header 
         title="Performance" 
         subtitle="Évolution de votre portefeuille"
@@ -113,27 +129,38 @@ export default function Performance() {
 
         {!isLoading && performance && (
           <>
+            {/* Metrics cards - EN HAUT */}
             <PerformanceMetrics performance={performance} />
 
+            {/* Trade Republic style header with value and percentage */}
             <div className="card">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-text-primary">Évolution de la Valeur</h2>
-                
-                <div className="flex gap-2">
-                  {periods.map((p) => (
-                    <button
-                      key={p.value}
-                      onClick={() => setPeriod(p.value)}
-                      className={`px-4 py-2 rounded-md transition-colors ${
-                        period === p.value
-                          ? 'bg-accent-primary text-white'
-                          : 'bg-background-tertiary text-text-secondary hover:bg-background-primary'
-                      }`}
-                    >
-                      {p.label}
-                    </button>
-                  ))}
+              <div className="mb-6">
+                <p className="text-text-muted text-sm mb-2">Compte-Titres</p>
+                <div className="flex items-baseline gap-3 mb-1">
+                  <h1 className="text-4xl font-bold text-text-primary">
+                    {formatCurrency(performance.total_value)}
+                  </h1>
+                  <span className={`text-2xl font-semibold ${performancePct >= 0 ? 'text-success' : 'text-error'}`}>
+                    {formatPercent(performancePct)}
+                  </span>
                 </div>
+              </div>
+
+              {/* Period selector */}
+              <div className="flex gap-2 mb-6 border-b border-background-tertiary pb-4">
+                {periods.map((p) => (
+                  <button
+                    key={p.value}
+                    onClick={() => setPeriod(p.value)}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      period === p.value
+                        ? 'bg-background-tertiary text-text-primary'
+                        : 'text-text-muted hover:text-text-secondary'
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
               </div>
 
               <PerformanceChart data={performance.time_series} />

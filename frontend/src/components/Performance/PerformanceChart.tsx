@@ -1,5 +1,6 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import type { PerformancePoint } from '../../types'
+import { useMemo } from 'react'
 
 interface PerformanceChartProps {
   data: PerformancePoint[]
@@ -23,9 +24,34 @@ export default function PerformanceChart({ data, isLoading }: PerformanceChartPr
     )
   }
 
+  // No calculation needed - just display the value in EUR
+  const chartData = useMemo(() => {
+    if (data.length === 0) return []
+    
+    // Filter out points with zero value (no positions yet)
+    return data.filter(d => d.value > 0)
+  }, [data])
+
+  // Calculate min and max for Y axis
+  const { minValue, maxValue } = useMemo(() => {
+    if (chartData.length === 0) return { minValue: 0, maxValue: 1000 }
+    
+    const values = chartData.map(d => d.value)
+    const min = Math.min(...values)
+    const max = Math.max(...values)
+    
+    // Add padding to min/max
+    const padding = (max - min) * 0.1
+    
+    return {
+      minValue: Math.max(0, Math.floor(min - padding)),
+      maxValue: Math.ceil(max + padding)
+    }
+  }, [chartData])
+
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr)
-    return date.toLocaleDateString('fr-FR', { month: 'short', day: 'numeric' })
+    return date.toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' })
   }
 
   const formatValue = (value: number) => {
@@ -37,67 +63,118 @@ export default function PerformanceChart({ data, isLoading }: PerformanceChartPr
     }).format(value)
   }
 
+  const formatPercent = (value: number) => {
+    return `${value >= 0 ? '+' : ''}${value.toFixed(1)}%`
+  }
+
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload
+      const gain = data.value - data.invested
+      const gainPct = data.invested > 0 ? (gain / data.invested) * 100 : 0
+      
       return (
         <div className="bg-background-secondary border border-background-tertiary rounded-lg p-3 shadow-lg">
-          <p className="text-text-secondary text-sm mb-1">
+          <p className="text-text-secondary text-sm mb-2">
             {new Date(data.date).toLocaleDateString('fr-FR', {
               year: 'numeric',
               month: 'long',
               day: 'numeric',
             })}
           </p>
-          <p className="text-accent-primary font-semibold">
-            {formatValue(data.value)}
-          </p>
+          <div className="space-y-1">
+            <div>
+              <p className="text-xs text-text-muted">Valeur actuelle</p>
+              <p className="text-success font-semibold text-lg">
+                {formatValue(data.value)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-text-muted">Montant investi</p>
+              <p className="text-text-secondary text-sm">
+                {formatValue(data.invested)}
+              </p>
+            </div>
+            <div className="pt-1 border-t border-background-tertiary">
+              <p className="text-xs text-text-muted">Gain/Perte</p>
+              <p className={`text-sm font-semibold ${gain >= 0 ? 'text-success' : 'text-error'}`}>
+                {formatValue(gain)} ({gainPct >= 0 ? '+' : ''}{gainPct.toFixed(2)}%)
+              </p>
+            </div>
+          </div>
         </div>
       )
     }
     return null
   }
 
+  // Line color - always green for assets value
+  const lineColor = '#10B981'
+
   return (
     <div className="w-full">
-      <ResponsiveContainer width="100%" height={300} className="min-h-[250px]">
+      <ResponsiveContainer width="100%" height={400} className="min-h-[350px]">
         <LineChart 
-          data={data} 
+          data={chartData} 
           margin={{ 
-            top: 5, 
-            right: window.innerWidth < 640 ? 10 : 30, 
-            left: window.innerWidth < 640 ? 0 : 20, 
-            bottom: 5 
+            top: 20, 
+            right: 30, 
+            left: 10, 
+            bottom: 20 
           }}
         >
           <defs>
             <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.8} />
-              <stop offset="95%" stopColor="#3B82F6" stopOpacity={0.1} />
+              <stop offset="5%" stopColor="#10B981" stopOpacity={0.3} />
+              <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
+          <CartesianGrid 
+            strokeDasharray="3 3" 
+            stroke="#374151" 
+            opacity={0.2}
+            vertical={false}
+          />
           <XAxis
             dataKey="date"
             tickFormatter={formatDate}
-            stroke="#9CA3AF"
-            style={{ fontSize: window.innerWidth < 640 ? '10px' : '12px' }}
-            interval="preserveStartEnd"
+            stroke="#6B7280"
+            style={{ fontSize: '12px' }}
+            tickLine={false}
+            axisLine={false}
+            dy={10}
           />
           <YAxis
+            domain={[minValue, maxValue]}
             tickFormatter={formatValue}
-            stroke="#9CA3AF"
-            style={{ fontSize: window.innerWidth < 640 ? '10px' : '12px' }}
-            width={window.innerWidth < 640 ? 60 : 80}
+            stroke="#6B7280"
+            style={{ fontSize: '12px' }}
+            tickLine={false}
+            axisLine={false}
+            width={80}
+            orientation="right"
           />
-          <Tooltip content={<CustomTooltip />} />
+          <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#6B7280', strokeWidth: 1, strokeDasharray: '5 5' }} />
+          
+          {/* Invested line (dashed, less visible) */}
+          <Line
+            type="monotone"
+            dataKey="invested"
+            stroke="#6B7280"
+            strokeWidth={2}
+            strokeDasharray="5 5"
+            dot={false}
+            opacity={0.5}
+          />
+          
+          {/* Value line (solid, green) */}
           <Line
             type="monotone"
             dataKey="value"
-            stroke="#3B82F6"
-            strokeWidth={2}
+            stroke={lineColor}
+            strokeWidth={3}
             dot={false}
-            activeDot={{ r: window.innerWidth < 640 ? 4 : 6, fill: '#3B82F6' }}
+            activeDot={{ r: 6, fill: lineColor, strokeWidth: 2, stroke: '#fff' }}
             fill="url(#colorValue)"
           />
         </LineChart>

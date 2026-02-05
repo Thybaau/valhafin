@@ -43,8 +43,9 @@ type Performance struct {
 
 // PerformancePoint represents a point in the performance time series
 type PerformancePoint struct {
-	Date  time.Time `json:"date"`
-	Value float64   `json:"value"`
+	Date     time.Time `json:"date"`
+	Value    float64   `json:"value"`    // Current value of assets in EUR
+	Invested float64   `json:"invested"` // Amount invested in assets (cost basis)
 }
 
 // AssetPerformance represents performance metrics for a specific asset
@@ -99,8 +100,8 @@ func (s *PerformanceService) CalculateGlobalPerformance(period string) (*Perform
 	// Calculate date range based on period
 	startDate, endDate := calculateDateRange(period)
 
-	// Collect all transactions from all accounts
-	var allTransactions []models.Transaction
+	// Collect filtered transactions (for period-specific metrics)
+	var filteredTransactions []models.Transaction
 	for _, account := range accounts {
 		filter := database.TransactionFilter{
 			StartDate: startDate.Format(time.RFC3339),
@@ -112,11 +113,35 @@ func (s *PerformanceService) CalculateGlobalPerformance(period string) (*Perform
 			return nil, fmt.Errorf("failed to get transactions for account %s: %w", account.ID, err)
 		}
 
+		filteredTransactions = append(filteredTransactions, transactions...)
+	}
+
+	// Collect ALL transactions (for cash balance calculation only)
+	var allTransactions []models.Transaction
+	for _, account := range accounts {
+		filter := database.TransactionFilter{
+			Limit: 10000, // Get all transactions
+		}
+
+		transactions, err := s.DB.GetTransactionsByAccount(account.ID, account.Platform, filter)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get transactions for account %s: %w", account.ID, err)
+		}
+
 		allTransactions = append(allTransactions, transactions...)
 	}
 
-	// Calculate performance
-	return s.calculatePerformance(allTransactions, startDate, endDate)
+	// Calculate performance with filtered transactions
+	performance, err := s.calculatePerformance(filteredTransactions, startDate, endDate)
+	if err != nil {
+		return nil, err
+	}
+
+	// Recalculate cash balance using ALL transactions
+	cashBalance := s.calculateCashBalance(allTransactions)
+	performance.CashBalance = cashBalance
+
+	return performance, nil
 }
 
 // CalculateAssetPerformance calculates performance for a specific asset
@@ -410,7 +435,55 @@ func calculateRemainingInvestment(holdings map[string]*assetHolding) float64 {
 	return total
 }
 
-// generateTimeSeries generates a time series of portfolio values
+// calculateCashBalance calculates the current cash balance using all transactions
+// Cash = deposits - buys + sells + interests - fees
+func (s *PerformanceService) calculateCashBalance(transactions []models.Transaction) float64 {
+	var totalDeposits float64
+	var totalInvested float64 // Total amount spent on buys
+	var totalSales float64    // Total amount received from sells
+	var totalInterests float64
+	var totalFees float64
+
+	for _, tx := range transactions {
+		// Parse fees
+		fees := parseFees(tx.Fees)
+		totalFees += fees
+
+		// Handle different transaction types
+		switch tx.TransactionType {
+		case "deposit":
+			totalDeposits += tx.AmountValue
+		case "withdrawal":
+			totalDeposits += tx.AmountValue // AmountValue is negative for withdrawals
+		case "interest":
+			totalInterests += tx.AmountValue
+		case "dividend":
+			totalInterests += tx.AmountValue
+		case "buy":
+			if tx.ISIN != nil && *tx.ISIN != "" {
+				investedAmount := tx.AmountValue
+				if investedAmount < 0 {
+					investedAmount = -investedAmount
+				}
+				totalInvested += investedAmount
+			}
+		case "sell":
+			if tx.ISIN != nil && *tx.ISIN != "" {
+				saleAmount := tx.AmountValue
+				if saleAmount < 0 {
+					saleAmount = -saleAmount
+				}
+				totalSales += saleAmount
+			}
+		}
+	}
+
+	// Cash balance = deposits - buys + sells + interests - fees
+	return totalDeposits - totalInvested + totalSales + totalInterests - totalFees
+}
+
+// generateTimeSeries generates a time series of portfolio values using historical prices
+// This creates a Trade Republic-style performance chart with weekly data points
 func (s *PerformanceService) generateTimeSeries(transactions []models.Transaction, holdings map[string]*assetHolding, startDate, endDate time.Time) []PerformancePoint {
 	if len(transactions) == 0 {
 		return []PerformancePoint{}
@@ -431,122 +504,271 @@ func (s *PerformanceService) generateTimeSeries(transactions []models.Transactio
 		}
 	}
 
-	// Replay transactions to build time series
-	currentHoldings := make(map[string]*assetHolding)
-	var cashBalance float64
+	// Determine the actual start date (first transaction date)
+	firstTxTime, err := time.Parse(time.RFC3339, sortedTxs[0].Timestamp)
+	if err != nil {
+		firstTxTime = startDate
+	}
+
+	// Use the later of startDate or first transaction date
+	if firstTxTime.After(startDate) {
+		startDate = firstTxTime
+	}
+
+	// Generate weekly time points from start to end
+	var timePoints []time.Time
+	currentPoint := startDate
+
+	// Determine interval based on period length
+	daysDiff := endDate.Sub(startDate).Hours() / 24
+	var interval time.Duration
+
+	if daysDiff <= 7 {
+		interval = 24 * time.Hour // Daily for 1 week
+	} else if daysDiff <= 30 {
+		interval = 24 * time.Hour // Daily for 1 month
+	} else if daysDiff <= 90 {
+		interval = 3 * 24 * time.Hour // Every 3 days for 3 months
+	} else {
+		interval = 7 * 24 * time.Hour // Weekly for longer periods
+	}
+
+	for currentPoint.Before(endDate) || currentPoint.Equal(endDate) {
+		timePoints = append(timePoints, currentPoint)
+		currentPoint = currentPoint.Add(interval)
+	}
+
+	// Always add the end date as the last point
+	if len(timePoints) == 0 || !timePoints[len(timePoints)-1].Equal(endDate) {
+		timePoints = append(timePoints, endDate)
+	}
+
+	// Build time series by replaying transactions and using historical prices
 	var timeSeries []PerformancePoint
+	currentHoldings := make(map[string]*assetHolding)
+	txIndex := 0
 
-	// Add initial point
-	timeSeries = append(timeSeries, PerformancePoint{
-		Date:  startDate,
-		Value: 0,
-	})
-
-	for _, tx := range sortedTxs {
-		txTime, err := time.Parse(time.RFC3339, tx.Timestamp)
-		if err != nil {
-			continue
-		}
-
-		// Process transaction
-		switch tx.TransactionType {
-		case "deposit":
-			cashBalance += tx.AmountValue
-		case "withdrawal":
-			cashBalance += tx.AmountValue
-		case "interest":
-			cashBalance += tx.AmountValue
-		case "fee":
-			cashBalance += tx.AmountValue
-		case "buy":
-			if tx.ISIN != nil && *tx.ISIN != "" {
-				isin := *tx.ISIN
-				if _, exists := currentHoldings[isin]; !exists {
-					currentHoldings[isin] = &assetHolding{ISIN: isin, Quantity: 0, Invested: 0}
-				}
-				currentHoldings[isin].Quantity += tx.Quantity
-				currentHoldings[isin].Invested += -tx.AmountValue
-				cashBalance += tx.AmountValue
+	for _, timePoint := range timePoints {
+		// Process all transactions up to this time point
+		for txIndex < len(sortedTxs) {
+			txTime, err := time.Parse(time.RFC3339, sortedTxs[txIndex].Timestamp)
+			if err != nil || txTime.After(timePoint) {
+				break
 			}
-		case "sell":
-			if tx.ISIN != nil && *tx.ISIN != "" {
-				isin := *tx.ISIN
-				if holding, exists := currentHoldings[isin]; exists {
-					avgCost := 0.0
-					if holding.Quantity > 0 {
-						avgCost = holding.Invested / holding.Quantity
+
+			tx := sortedTxs[txIndex]
+
+			// Process transaction
+			switch tx.TransactionType {
+			case "buy":
+				if tx.ISIN != nil && *tx.ISIN != "" {
+					isin := *tx.ISIN
+					if _, exists := currentHoldings[isin]; !exists {
+						currentHoldings[isin] = &assetHolding{ISIN: isin, Quantity: 0, Invested: 0}
 					}
-					holding.Quantity -= tx.Quantity
-					holding.Invested -= avgCost * tx.Quantity
+					currentHoldings[isin].Quantity += tx.Quantity
+					// Track cost basis
+					investedAmount := tx.AmountValue
+					if investedAmount < 0 {
+						investedAmount = -investedAmount
+					}
+					currentHoldings[isin].Invested += investedAmount
 				}
-				cashBalance += tx.AmountValue
+			case "sell":
+				if tx.ISIN != nil && *tx.ISIN != "" {
+					isin := *tx.ISIN
+					if holding, exists := currentHoldings[isin]; exists {
+						// Reduce cost basis proportionally
+						avgCost := 0.0
+						if holding.Quantity > 0 {
+							avgCost = holding.Invested / holding.Quantity
+						}
+						holding.Quantity -= tx.Quantity
+						holding.Invested -= avgCost * tx.Quantity
+					}
+				}
 			}
-		case "dividend":
-			cashBalance += tx.AmountValue
+
+			txIndex++
 		}
 
-		// Calculate current portfolio value (assets only, no cash)
+		// Calculate portfolio value and total invested at this time point
 		portfolioValue := 0.0
+		totalInvested := 0.0
+
 		for isin, holding := range currentHoldings {
-			if holding.Quantity > 0 {
-				currentPrice, err := s.PriceService.GetCurrentPrice(isin)
-				if err == nil {
-					portfolioValue += holding.Quantity * currentPrice.Price
-				} else {
-					portfolioValue += holding.Invested
-				}
+			if holding.Quantity <= 0 {
+				continue
 			}
+
+			// Add to total invested (cost basis)
+			totalInvested += holding.Invested
+
+			// Get historical price for this date
+			price, err := s.getHistoricalPrice(isin, timePoint)
+			if err != nil {
+				// Skip if no price available
+				continue
+			}
+
+			portfolioValue += holding.Quantity * price
 		}
 
 		// Add point to time series
 		timeSeries = append(timeSeries, PerformancePoint{
-			Date:  txTime,
-			Value: portfolioValue,
+			Date:     timePoint,
+			Value:    portfolioValue,
+			Invested: totalInvested,
 		})
 	}
-
-	// Add final point (current value - assets only, no cash)
-	finalValue := 0.0
-	for isin, holding := range currentHoldings {
-		if holding.Quantity > 0 {
-			currentPrice, err := s.PriceService.GetCurrentPrice(isin)
-			if err == nil {
-				finalValue += holding.Quantity * currentPrice.Price
-			} else {
-				finalValue += holding.Invested
-			}
-		}
-	}
-
-	timeSeries = append(timeSeries, PerformancePoint{
-		Date:  endDate,
-		Value: finalValue,
-	})
 
 	return timeSeries
 }
 
-// generateAssetTimeSeries generates a time series for a specific asset
-func (s *PerformanceService) generateAssetTimeSeries(isin string, transactions []models.Transaction, startDate, endDate time.Time) ([]PerformancePoint, error) {
-	// Get price history for the asset
-	priceHistory, err := s.PriceService.GetPriceHistory(isin, startDate, endDate)
-	if err != nil {
-		return nil, err
+// getHistoricalPrice retrieves the historical price for an asset at a specific date
+// It looks for the closest price in the database
+func (s *PerformanceService) getHistoricalPrice(isin string, date time.Time) (float64, error) {
+	// Check if DB is available (for tests)
+	if s.DB == nil {
+		// Fallback to current price service
+		currentPrice, err := s.PriceService.GetCurrentPrice(isin)
+		if err != nil {
+			return 0, fmt.Errorf("no price available for %s at %s", isin, date.Format("2006-01-02"))
+		}
+		return currentPrice.Price, nil
 	}
 
-	// Build time series by combining quantity held with price history
-	var timeSeries []PerformancePoint
-	var currentQuantity float64
+	// Query for the closest price to the given date
+	query := `
+		SELECT price 
+		FROM asset_prices 
+		WHERE isin = $1 
+		AND timestamp <= $2
+		ORDER BY timestamp DESC
+		LIMIT 1
+	`
+
+	var price float64
+	err := s.DB.Get(&price, query, isin, date)
+	if err != nil {
+		// If no historical price found, try to get current price as fallback
+		currentPrice, err := s.PriceService.GetCurrentPrice(isin)
+		if err != nil {
+			return 0, fmt.Errorf("no price available for %s at %s", isin, date.Format("2006-01-02"))
+		}
+		return currentPrice.Price, nil
+	}
+
+	return price, nil
+}
+
+// generateAssetTimeSeries generates a time series for a specific asset
+// This replays transactions and uses historical prices to show asset value evolution
+func (s *PerformanceService) generateAssetTimeSeries(isin string, transactions []models.Transaction, startDate, endDate time.Time) ([]PerformancePoint, error) {
+	if len(transactions) == 0 {
+		return []PerformancePoint{}, nil
+	}
 
 	// Sort transactions by timestamp
-	// For simplicity, we'll just use the price history
-	for _, pricePoint := range priceHistory {
-		// Calculate quantity held at this point
-		// This is simplified - full implementation would replay transactions
-		value := currentQuantity * pricePoint.Price
+	sortedTxs := make([]models.Transaction, len(transactions))
+	copy(sortedTxs, transactions)
+
+	for i := 0; i < len(sortedTxs); i++ {
+		for j := i + 1; j < len(sortedTxs); j++ {
+			ti, _ := time.Parse(time.RFC3339, sortedTxs[i].Timestamp)
+			tj, _ := time.Parse(time.RFC3339, sortedTxs[j].Timestamp)
+			if ti.After(tj) {
+				sortedTxs[i], sortedTxs[j] = sortedTxs[j], sortedTxs[i]
+			}
+		}
+	}
+
+	// Determine the actual start date (first transaction date)
+	firstTxTime, err := time.Parse(time.RFC3339, sortedTxs[0].Timestamp)
+	if err != nil {
+		firstTxTime = startDate
+	}
+
+	if firstTxTime.After(startDate) {
+		startDate = firstTxTime
+	}
+
+	// Generate time points
+	var timePoints []time.Time
+	currentPoint := startDate
+
+	daysDiff := endDate.Sub(startDate).Hours() / 24
+	var interval time.Duration
+
+	if daysDiff <= 7 {
+		interval = 24 * time.Hour
+	} else if daysDiff <= 30 {
+		interval = 24 * time.Hour
+	} else if daysDiff <= 90 {
+		interval = 3 * 24 * time.Hour
+	} else {
+		interval = 7 * 24 * time.Hour
+	}
+
+	for currentPoint.Before(endDate) || currentPoint.Equal(endDate) {
+		timePoints = append(timePoints, currentPoint)
+		currentPoint = currentPoint.Add(interval)
+	}
+
+	if len(timePoints) == 0 || !timePoints[len(timePoints)-1].Equal(endDate) {
+		timePoints = append(timePoints, endDate)
+	}
+
+	// Build time series
+	var timeSeries []PerformancePoint
+	var currentQuantity float64
+	var totalInvested float64
+	txIndex := 0
+
+	for _, timePoint := range timePoints {
+		// Process all transactions up to this time point
+		for txIndex < len(sortedTxs) {
+			txTime, err := time.Parse(time.RFC3339, sortedTxs[txIndex].Timestamp)
+			if err != nil || txTime.After(timePoint) {
+				break
+			}
+
+			tx := sortedTxs[txIndex]
+
+			switch tx.TransactionType {
+			case "buy":
+				currentQuantity += tx.Quantity
+				investedAmount := tx.AmountValue
+				if investedAmount < 0 {
+					investedAmount = -investedAmount
+				}
+				totalInvested += investedAmount
+			case "sell":
+				// Reduce cost basis proportionally
+				avgCost := 0.0
+				if currentQuantity > 0 {
+					avgCost = totalInvested / currentQuantity
+				}
+				currentQuantity -= tx.Quantity
+				totalInvested -= avgCost * tx.Quantity
+			}
+
+			txIndex++
+		}
+
+		// Get historical price for this date
+		price, err := s.getHistoricalPrice(isin, timePoint)
+		if err != nil {
+			continue
+		}
+
+		// Calculate value
+		value := currentQuantity * price
+
 		timeSeries = append(timeSeries, PerformancePoint{
-			Date:  pricePoint.Timestamp,
-			Value: value,
+			Date:     timePoint,
+			Value:    value,
+			Invested: totalInvested,
 		})
 	}
 

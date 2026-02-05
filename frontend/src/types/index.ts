@@ -55,6 +55,7 @@ export interface Performance {
 export interface PerformancePoint {
   date: string
   value: number
+  invested: number
 }
 
 export interface ErrorResponse {
