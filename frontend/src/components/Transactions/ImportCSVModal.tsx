@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useAccounts } from '../../hooks/useAccounts'
 import { useImportCSV } from '../../hooks/useTransactions'
 
@@ -19,6 +19,15 @@ export default function ImportCSVModal({
   const { data: accountsData } = useAccounts()
   const importMutation = useImportCSV()
 
+  const handleClose = useCallback(() => {
+    if (!importMutation.isPending) {
+      setSelectedFile(null)
+      setSelectedAccountId('')
+      importMutation.reset()
+      onClose()
+    }
+  }, [importMutation, onClose])
+
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !importMutation.isPending) {
@@ -35,16 +44,8 @@ export default function ImportCSVModal({
       document.removeEventListener('keydown', handleEscape)
       document.body.style.overflow = 'unset'
     }
-  }, [isOpen, importMutation.isPending])
-
-  const handleClose = () => {
-    if (!importMutation.isPending) {
-      setSelectedFile(null)
-      setSelectedAccountId('')
-      importMutation.reset()
-      onClose()
-    }
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, handleClose])
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault()

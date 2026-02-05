@@ -8,6 +8,49 @@ interface FeesChartProps {
   isLoading?: boolean
 }
 
+interface TooltipProps {
+  active?: boolean
+  payload?: Array<{
+    payload: {
+      date: string
+      fees: number
+    }
+  }>
+}
+
+const CustomTooltip = ({ active, payload }: TooltipProps) => {
+  const formatCurrency = (value: number) => {
+    if (!value || isNaN(value)) {
+      return '0,00 €'
+    }
+    return new Intl.NumberFormat('fr-FR', {
+      style: 'currency',
+      currency: 'EUR',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value)
+  }
+
+  if (active && payload && payload.length) {
+    const data = payload[0].payload
+    return (
+      <div className="bg-background-secondary border border-background-tertiary rounded-lg p-3 shadow-lg">
+        <p className="text-text-secondary text-sm mb-1">
+          {new Date(data.date).toLocaleDateString('fr-FR', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+          })}
+        </p>
+        <p className="text-warning font-semibold">
+          {formatCurrency(data.fees)}
+        </p>
+      </div>
+    )
+  }
+  return null
+}
+
 export default function FeesChart({ data, isLoading }: FeesChartProps) {
   if (isLoading) {
     return (
@@ -47,27 +90,6 @@ export default function FeesChart({ data, isLoading }: FeesChartProps) {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(value)
-  }
-
-  const CustomTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload
-      return (
-        <div className="bg-background-secondary border border-background-tertiary rounded-lg p-3 shadow-lg">
-          <p className="text-text-secondary text-sm mb-1">
-            {new Date(data.date).toLocaleDateString('fr-FR', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-            })}
-          </p>
-          <p className="text-warning font-semibold">
-            {formatCurrency(data.fees)}
-          </p>
-        </div>
-      )
-    }
-    return null
   }
 
   return (

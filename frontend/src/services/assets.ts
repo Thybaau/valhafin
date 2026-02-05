@@ -1,9 +1,9 @@
 import apiClient from './api'
-import type { AssetPrice } from '../types'
+import type { AssetPrice, AssetPosition } from '../types'
 
 export const assetsApi = {
   // Récupérer tous les actifs avec positions
-  getAssets: async (): Promise<any[]> => {
+  getAssets: async (): Promise<AssetPosition[]> => {
     const response = await apiClient.get('/assets')
     return response.data
   },

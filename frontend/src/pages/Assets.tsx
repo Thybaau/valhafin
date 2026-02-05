@@ -12,30 +12,11 @@ import {
 } from 'recharts';
 import { Search, AlertCircle, CheckCircle, RefreshCw } from 'lucide-react';
 import { assetsApi } from '../services';
+import type { AssetPosition } from '../types';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import ErrorMessage from '../components/common/ErrorMessage';
 import Header from '../components/Layout/Header';
 import SymbolSearchModal from '../components/Assets/SymbolSearchModal';
-
-interface AssetPosition {
-  isin: string;
-  name: string;
-  symbol?: string;
-  symbol_verified: boolean;
-  quantity: number;
-  average_buy_price: number;
-  current_price: number;
-  current_value: number;
-  total_invested: number;
-  unrealized_gain: number;
-  unrealized_gain_pct: number;
-  currency: string;
-  purchases: Array<{
-    date: string;
-    quantity: number;
-    price: number;
-  }>;
-}
 
 interface PriceHistory {
   id: number;
@@ -177,7 +158,7 @@ export default function Assets() {
     const periodStartDate = new Date(chartData[0].timestamp);
     
     // Get the date of the first purchase
-    const firstPurchaseDate = selectedAsset.purchases.length > 0
+    const firstPurchaseDate = selectedAsset.purchases && selectedAsset.purchases.length > 0
       ? new Date(Math.min(...selectedAsset.purchases.map(p => new Date(p.date).getTime())))
       : new Date();
     
@@ -197,10 +178,10 @@ export default function Assets() {
     }
     
     // Filter purchases that happened during the period
-    const purchasesDuringPeriod = selectedAsset.purchases.filter(purchase => {
+    const purchasesDuringPeriod = selectedAsset.purchases?.filter(purchase => {
       const purchaseDate = new Date(purchase.date);
       return purchaseDate >= periodStartDate;
-    });
+    }) || [];
     
     // Calculate total quantity bought during the period
     const quantityBoughtDuringPeriod = purchasesDuringPeriod.reduce(
@@ -241,7 +222,7 @@ export default function Assets() {
 
   // Create purchase markers - only include purchases that have corresponding chart data
   const purchaseMarkers = selectedAsset?.purchases
-    .map((purchase) => {
+    ?.map((purchase) => {
       const purchaseDate = new Date(purchase.date);
       
       // Find the closest point in chart data (within a few days)

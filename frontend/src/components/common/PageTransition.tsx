@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useLocation } from 'react-router-dom'
 
 interface PageTransitionProps {
@@ -10,11 +10,10 @@ export default function PageTransition({ children }: PageTransitionProps) {
   const [displayLocation, setDisplayLocation] = useState(location)
   const [transitionStage, setTransitionStage] = useState('fadeIn')
 
-  useEffect(() => {
-    if (location !== displayLocation) {
-      setTransitionStage('fadeOut')
-    }
-  }, [location, displayLocation])
+  // Use a ref to track if we need to transition
+  if (location.pathname !== displayLocation.pathname && transitionStage === 'fadeIn') {
+    setTransitionStage('fadeOut')
+  }
 
   return (
     <div

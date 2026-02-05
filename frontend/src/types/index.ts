@@ -41,6 +41,27 @@ export interface AssetPrice {
   timestamp: string
 }
 
+export interface AssetPosition {
+  isin: string
+  name: string
+  symbol?: string
+  symbol_verified: boolean
+  quantity: number
+  average_buy_price: number
+  current_price: number
+  current_value: number
+  total_invested: number
+  unrealized_gain: number
+  unrealized_gain_pct: number
+  total_fees: number
+  currency: string
+  purchases?: Array<{
+    date: string
+    quantity: number
+    price: number
+  }>
+}
+
 export interface Performance {
   total_value: number
   total_invested: number

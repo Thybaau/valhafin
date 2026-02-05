@@ -10,24 +10,7 @@ import {
   ReferenceDot,
 } from 'recharts';
 import { assetsApi } from '../../services';
-
-interface AssetPosition {
-  isin: string;
-  name: string;
-  quantity: number;
-  average_buy_price: number;
-  current_price: number;
-  current_value: number;
-  total_invested: number;
-  unrealized_gain: number;
-  unrealized_gain_pct: number;
-  currency: string;
-  purchases: Array<{
-    date: string;
-    quantity: number;
-    price: number;
-  }>;
-}
+import type { AssetPosition } from '../../types';
 
 interface Props {
   asset: AssetPosition;
@@ -73,7 +56,7 @@ export default function AssetDetailModal({ asset, onClose }: Props) {
   })) || [];
 
   // Create purchase markers
-  const purchaseMarkers = asset.purchases.map((purchase) => {
+  const purchaseMarkers = asset.purchases?.map((purchase) => {
     // Find closest price point to purchase date
     const purchaseDate = new Date(purchase.date);
     const closestPoint = chartData.find((point) => {
@@ -194,7 +177,7 @@ export default function AssetDetailModal({ asset, onClose }: Props) {
                     dot={false}
                   />
                   {/* Purchase markers */}
-                  {purchaseMarkers.map((marker, index) => (
+                  {purchaseMarkers?.map((marker, index) => (
                     <ReferenceDot
                       key={index}
                       x={marker.date}
@@ -248,7 +231,7 @@ export default function AssetDetailModal({ asset, onClose }: Props) {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {asset.purchases.map((purchase, index) => (
+                  {asset.purchases?.map((purchase, index) => (
                     <tr key={index}>
                       <td className="px-4 py-3 text-sm text-gray-900">
                         {new Date(purchase.date).toLocaleDateString('fr-FR')}

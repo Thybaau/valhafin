@@ -30,6 +30,17 @@ const TRANSACTION_TYPES = [
   { value: 'other', label: 'Autre' },
 ]
 
+const SortIcon = ({ column, sortColumn, sortDirection }: { column: SortColumn; sortColumn: SortColumn; sortDirection: SortDirection }) => {
+  if (sortColumn !== column) {
+    return <span className="text-text-muted ml-1">⇅</span>
+  }
+  return (
+    <span className="text-accent-primary ml-1">
+      {sortDirection === 'asc' ? '↑' : '↓'}
+    </span>
+  )
+}
+
 export default function TransactionTable({
   transactions,
   isLoading,
@@ -257,17 +268,6 @@ export default function TransactionTable({
     </button>
   )
 
-  const SortIcon = ({ column }: { column: SortColumn }) => {
-    if (sortColumn !== column) {
-      return <span className="text-text-muted ml-1">⇅</span>
-    }
-    return (
-      <span className="text-accent-primary ml-1">
-        {sortDirection === 'asc' ? '↑' : '↓'}
-      </span>
-    )
-  }
-
   if (isLoading) {
     return (
       <div className="card">
@@ -300,7 +300,7 @@ export default function TransactionTable({
                 onClick={() => handleSort('timestamp')}
               >
                 Date
-                <SortIcon column="timestamp" />
+                <SortIcon column="timestamp" sortColumn={sortColumn} sortDirection={sortDirection} />
               </th>
               <th className="text-left py-3 px-4 text-text-muted font-medium">
                 Actif
@@ -316,7 +316,7 @@ export default function TransactionTable({
                 onClick={() => handleSort('amount')}
               >
                 Montant
-                <SortIcon column="amount" />
+                <SortIcon column="amount" sortColumn={sortColumn} sortDirection={sortDirection} />
               </th>
               <th className="text-right py-3 px-4 text-text-muted font-medium">
                 Frais

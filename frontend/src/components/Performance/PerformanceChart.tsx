@@ -7,26 +7,71 @@ interface PerformanceChartProps {
   isLoading?: boolean
 }
 
+interface TooltipProps {
+  active?: boolean
+  payload?: Array<{
+    payload: {
+      date: string
+      value: number
+      invested: number
+    }
+  }>
+}
+
+const CustomTooltip = ({ active, payload }: TooltipProps) => {
+  const formatValue = (value: number) => {
+    return new Intl.NumberFormat('fr-FR', {
+      style: 'currency',
+      currency: 'EUR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value)
+  }
+
+  if (active && payload && payload.length) {
+    const data = payload[0].payload
+    const gain = data.value - data.invested
+    const gainPct = data.invested > 0 ? (gain / data.invested) * 100 : 0
+    
+    return (
+      <div className="bg-background-secondary border border-background-tertiary rounded-lg p-3 shadow-lg">
+        <p className="text-text-secondary text-sm mb-2">
+          {new Date(data.date).toLocaleDateString('fr-FR', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+          })}
+        </p>
+        <div className="space-y-1">
+          <div>
+            <p className="text-xs text-text-muted">Valeur actuelle</p>
+            <p className="text-success font-semibold text-lg">
+              {formatValue(data.value)}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-text-muted">Montant investi</p>
+            <p className="text-text-secondary text-sm">
+              {formatValue(data.invested)}
+            </p>
+          </div>
+          <div className="pt-1 border-t border-background-tertiary">
+            <p className="text-xs text-text-muted">Gain/Perte</p>
+            <p className={`text-sm font-semibold ${gain >= 0 ? 'text-success' : 'text-error'}`}>
+              {formatValue(gain)} ({gainPct >= 0 ? '+' : ''}{gainPct.toFixed(2)}%)
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+  return null
+}
+
 export default function PerformanceChart({ data, isLoading }: PerformanceChartProps) {
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent-primary"></div>
-      </div>
-    )
-  }
-
-  if (!data || data.length === 0) {
-    return (
-      <div className="text-center py-12 text-text-muted">
-        Aucune donnée de performance disponible
-      </div>
-    )
-  }
-
   // No calculation needed - just display the value in EUR
   const chartData = useMemo(() => {
-    if (data.length === 0) return []
+    if (!data || data.length === 0) return []
     
     // Filter out points with zero value (no positions yet)
     return data.filter(d => d.value > 0)
@@ -49,6 +94,22 @@ export default function PerformanceChart({ data, isLoading }: PerformanceChartPr
     }
   }, [chartData])
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent-primary"></div>
+      </div>
+    )
+  }
+
+  if (!data || data.length === 0) {
+    return (
+      <div className="text-center py-12 text-text-muted">
+        Aucune donnée de performance disponible
+      </div>
+    )
+  }
+
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr)
     return date.toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' })
@@ -61,48 +122,6 @@ export default function PerformanceChart({ data, isLoading }: PerformanceChartPr
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(value)
-  }
-
-
-  const CustomTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload
-      const gain = data.value - data.invested
-      const gainPct = data.invested > 0 ? (gain / data.invested) * 100 : 0
-      
-      return (
-        <div className="bg-background-secondary border border-background-tertiary rounded-lg p-3 shadow-lg">
-          <p className="text-text-secondary text-sm mb-2">
-            {new Date(data.date).toLocaleDateString('fr-FR', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-            })}
-          </p>
-          <div className="space-y-1">
-            <div>
-              <p className="text-xs text-text-muted">Valeur actuelle</p>
-              <p className="text-success font-semibold text-lg">
-                {formatValue(data.value)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-text-muted">Montant investi</p>
-              <p className="text-text-secondary text-sm">
-                {formatValue(data.invested)}
-              </p>
-            </div>
-            <div className="pt-1 border-t border-background-tertiary">
-              <p className="text-xs text-text-muted">Gain/Perte</p>
-              <p className={`text-sm font-semibold ${gain >= 0 ? 'text-success' : 'text-error'}`}>
-                {formatValue(gain)} ({gainPct >= 0 ? '+' : ''}{gainPct.toFixed(2)}%)
-              </p>
-            </div>
-          </div>
-        </div>
-      )
-    }
-    return null
   }
 
   // Line color - always green for assets value
