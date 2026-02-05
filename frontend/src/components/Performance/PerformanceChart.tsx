@@ -63,9 +63,6 @@ export default function PerformanceChart({ data, isLoading }: PerformanceChartPr
     }).format(value)
   }
 
-  const formatPercent = (value: number) => {
-    return `${value >= 0 ? '+' : ''}${value.toFixed(1)}%`
-  }
 
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
