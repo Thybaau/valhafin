@@ -1,95 +1,104 @@
 name: Tests
 
 on:
-    push:
-        branches: [main, develop]
-    pull_request:
-        branches: [main, develop]
-    workflow_dispatch:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
 
 jobs:
-    backend:
-        name: Backend Tests
-        runs-on: ubuntu-latest
+  backend:
+    name: Backend Tests
+    runs-on: ubuntu-latest
 
-        services:
-            postgres:
-                image: postgres:15
-                env:
-                    POSTGRES_USER: valhafin
-                    POSTGRES_PASSWORD: valhafin_dev_password
-                    POSTGRES_DB: valhafin_dev
-                options: >-
-                    --health-cmd pg_isready
-                    --health-interval 10s
-                    --health-timeout 5s
-                    --health-retries 5
-                ports:
-                    - 5432:5432
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: valhafin
+          POSTGRES_PASSWORD: valhafin_dev_password
+          POSTGRES_DB: valhafin_dev
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
 
-        steps:
-            - name: Checkout code
-              uses: actions/checkout@v4
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-            - name: Setup Go
-              uses: actions/setup-go@v5
-              with:
-                  go-version: "1.21"
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.21"
 
-            - name: Cache Go modules
-              uses: actions/cache@v4
-              with:
-                  path: ~/go/pkg/mod
-                  key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-                  restore-keys: |
-                      ${{ runner.os }}-go-
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
 
-            - name: Install dependencies
-              run: go mod download
+      - name: Install dependencies
+        run: go mod download
 
-            - name: Generate encryption key
-              run: echo "ENCRYPTION_KEY=$(openssl rand -hex 32)" >> $GITHUB_ENV
+      - name: Generate encryption key
+        run: echo "ENCRYPTION_KEY=$(openssl rand -hex 32)" >> $GITHUB_ENV
 
-            - name: Run tests
-              env:
-                  DATABASE_URL: postgres://valhafin:valhafin_dev_password@localhost:5432/valhafin_dev?sslmode=disable
-                  PORT: 8080
-              run: go test -v -race -coverprofile=coverage.out ./...
+      - name: Run tests
+        env:
+          DATABASE_URL: postgres://valhafin:valhafin_dev_password@localhost:5432/valhafin_dev?sslmode=disable
+          PORT: 8080
+        run: go test -v -race -coverprofile=coverage.out ./...
 
-            - name: Upload coverage
-              uses: codecov/codecov-action@v4
-              with:
-                  file: ./coverage.out
-                  flags: backend
-              continue-on-error: true
+      - name: Generate coverage report
+        run: go tool cover -html=coverage.out -o coverage.html
 
-    frontend:
-        name: Frontend Tests
-        runs-on: ubuntu-latest
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: coverage.html
 
-        steps:
-            - name: Checkout code
-              uses: actions/checkout@v4
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.out
+          flags: backend
+        continue-on-error: true
 
-            - name: Setup Node.js
-              uses: actions/setup-node@v4
-              with:
-                  node-version: "20"
-                  cache: "npm"
-                  cache-dependency-path: frontend/package-lock.json
+  frontend:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
 
-            - name: Install dependencies
-              working-directory: frontend
-              run: npm ci
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-            - name: Run linter
-              working-directory: frontend
-              run: npm run lint
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
 
-            - name: Run type check
-              working-directory: frontend
-              run: npx tsc --noEmit
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
 
-            - name: Build
-              working-directory: frontend
-              run: npm run build
+      - name: Run linter
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Run type check
+        working-directory: frontend
+        run: npx tsc --noEmit
+
+      - name: Build
+        working-directory: frontend
+        run: npm run build
