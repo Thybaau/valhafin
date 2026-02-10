@@ -1,101 +1,234 @@
 name: Docker Build and Push
 
 on:
-    push:
-        tags:
-            - "v*"
-    workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
 
 env:
-    REGISTRY: ghcr.io
-    BACKEND_IMAGE_NAME: ${{ github.repository }}/backend
-    FRONTEND_IMAGE_NAME: ${{ github.repository }}/frontend
+  REGISTRY: ghcr.io
+  BACKEND_IMAGE_NAME: ${{ github.repository }}/backend
+  FRONTEND_IMAGE_NAME: ${{ github.repository }}/frontend
 
 jobs:
-    build-and-push-backend:
-        name: Build and Push Backend
-        runs-on: ubuntu-latest
-        permissions:
-            contents: read
-            packages: write
+  build-backend:
+    name: Build Backend Image
+    runs-on: ubuntu-latest
 
-        steps:
-            - name: Checkout code
-              uses: actions/checkout@v4
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-            - name: Set up Docker Buildx
-              uses: docker/setup-buildx-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-            - name: Log in to Container Registry
-              uses: docker/login-action@v3
-              with:
-                  registry: ${{ env.REGISTRY }}
-                  username: ${{ github.actor }}
-                  password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest,enable={{is_default_branch}}
 
-            - name: Extract metadata
-              id: meta
-              uses: docker/metadata-action@v5
-              with:
-                  images: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}
-                  tags: |
-                      type=semver,pattern={{version}}
-                      type=semver,pattern={{major}}.{{minor}}
-                      type=semver,pattern={{major}}
-                      type=raw,value=latest,enable={{is_default_branch}}
+      - name: Build Backend Docker image (no push)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./internal/Dockerfile
+          push: false
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          outputs: type=docker,dest=/tmp/backend-image.tar
 
-            - name: Build and push Backend Docker image
-              uses: docker/build-push-action@v5
-              with:
-                  context: .
-                  file: ./internal/Dockerfile
-                  push: true
-                  tags: ${{ steps.meta.outputs.tags }}
-                  labels: ${{ steps.meta.outputs.labels }}
-                  cache-from: type=gha
-                  cache-to: type=gha,mode=max
-                  platforms: linux/amd64,linux/arm64
+      - name: Upload backend image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-image
+          path: /tmp/backend-image.tar
+          retention-days: 1
 
-    build-and-push-frontend:
-        name: Build and Push Frontend
-        runs-on: ubuntu-latest
-        permissions:
-            contents: read
-            packages: write
+  build-frontend:
+    name: Build Frontend Image
+    runs-on: ubuntu-latest
 
-        steps:
-            - name: Checkout code
-              uses: actions/checkout@v4
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-            - name: Set up Docker Buildx
-              uses: docker/setup-buildx-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-            - name: Log in to Container Registry
-              uses: docker/login-action@v3
-              with:
-                  registry: ${{ env.REGISTRY }}
-                  username: ${{ github.actor }}
-                  password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest,enable={{is_default_branch}}
 
-            - name: Extract metadata
-              id: meta
-              uses: docker/metadata-action@v5
-              with:
-                  images: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}
-                  tags: |
-                      type=semver,pattern={{version}}
-                      type=semver,pattern={{major}}.{{minor}}
-                      type=semver,pattern={{major}}
-                      type=raw,value=latest,enable={{is_default_branch}}
+      - name: Build Frontend Docker image (no push)
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: false
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          outputs: type=docker,dest=/tmp/frontend-image.tar
 
-            - name: Build and push Frontend Docker image
-              uses: docker/build-push-action@v5
-              with:
-                  context: ./frontend
-                  file: ./frontend/Dockerfile
-                  push: true
-                  tags: ${{ steps.meta.outputs.tags }}
-                  labels: ${{ steps.meta.outputs.labels }}
-                  cache-from: type=gha
-                  cache-to: type=gha,mode=max
-                  platforms: linux/amd64,linux/arm64
+      - name: Upload frontend image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-image
+          path: /tmp/frontend-image.tar
+          retention-days: 1
+
+  test-images:
+    name: Test Docker Images
+    runs-on: ubuntu-latest
+    needs: [build-backend, build-frontend]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download backend image
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-image
+          path: /tmp
+
+      - name: Download frontend image
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-image
+          path: /tmp
+
+      - name: Load Docker images
+        run: |
+          docker load --input /tmp/backend-image.tar
+          docker load --input /tmp/frontend-image.tar
+          docker image ls
+
+      - name: Extract version tag
+        id: meta
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/}
+          else
+            VERSION=latest
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Tag images for testing
+        run: |
+          docker tag ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:${{ steps.meta.outputs.version }} ghcr.io/thibault-cne/valhafin/backend:${{ steps.meta.outputs.version }}
+          docker tag ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ steps.meta.outputs.version }} ghcr.io/thibault-cne/valhafin/frontend:${{ steps.meta.outputs.version }}
+
+      - name: Create test environment
+        run: |
+          cat > .env.test << EOF
+          POSTGRES_DB=test
+          POSTGRES_USER=test
+          POSTGRES_PASSWORD=test_password_123
+          ENCRYPTION_KEY=$(openssl rand -hex 32)
+          VERSION=${{ steps.meta.outputs.version }}
+          BACKEND_PORT=8080
+          FRONTEND_PORT=80
+          EOF
+
+      - name: Start test stack
+        run: |
+          docker-compose --env-file .env.test up -d
+          echo "Waiting for services to be ready..."
+          sleep 30
+
+      - name: Check container status
+        run: |
+          docker-compose ps
+          echo "=== Backend logs ==="
+          docker-compose logs backend
+          echo "=== Frontend logs ==="
+          docker-compose logs frontend
+
+      - name: Run smoke tests
+        run: |
+          echo "Testing backend health endpoint..."
+          curl -f http://localhost:8080/health || (echo "❌ Backend health check failed" && exit 1)
+          echo "✅ Backend health check passed"
+
+          echo "Testing frontend health endpoint..."
+          curl -f http://localhost:80/health || (echo "❌ Frontend health check failed" && exit 1)
+          echo "✅ Frontend health check passed"
+
+          echo "Testing API accessibility..."
+          curl -f http://localhost:8080/api/accounts || (echo "❌ API endpoint failed" && exit 1)
+          echo "✅ API endpoints accessible"
+
+          echo "🎉 All smoke tests passed!"
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker-compose down -v
+          rm -f .env.test
+
+  push-images:
+    name: Push Images to Registry
+    runs-on: ubuntu-latest
+    needs: test-images
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Download backend image
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-image
+          path: /tmp
+
+      - name: Download frontend image
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-image
+          path: /tmp
+
+      - name: Load Docker images
+        run: |
+          docker load --input /tmp/backend-image.tar
+          docker load --input /tmp/frontend-image.tar
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push images
+        run: |
+          # Push all tags for backend
+          docker images ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }} --format '{{.Repository}}:{{.Tag}}' | while read image; do
+            echo "Pushing $image"
+            docker push "$image"
+          done
+
+          # Push all tags for frontend
+          docker images ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }} --format '{{.Repository}}:{{.Tag}}' | while read image; do
+            echo "Pushing $image"
+            docker push "$image"
+          done
+
+          echo "✅ All images pushed successfully!"

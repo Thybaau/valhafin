@@ -20,9 +20,7 @@ services:
       retries: 5
 
   backend:
-    build:
-      context: .
-      dockerfile: internal/Dockerfile
+    image: ghcr.io/thibault-cne/valhafin/backend:${VERSION:-latest}
     container_name: valhafin-backend
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-valhafin}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-valhafin}?sslmode=disable
@@ -52,9 +50,7 @@ services:
       retries: 3
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    image: ghcr.io/thibault-cne/valhafin/frontend:${VERSION:-latest}
     container_name: valhafin-frontend
     environment:
       VITE_API_URL: ${VITE_API_URL:-http://localhost:8080}
