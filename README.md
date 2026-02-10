@@ -1,269 +1,220 @@
 # Valhafin 🔥⚔️
 
-**Your Financial Valhalla**
+**Your Financial Valhalla** - *Where wealth warriors ascend*
 
-*Where wealth warriors ascend*
+Application web de gestion de portefeuille financier qui connecte vos comptes d'investissement (Trade Republic, Binance, Bourse Direct), synchronise automatiquement vos transactions, et visualise vos performances financières avec des graphiques interactifs.
 
-Application web de gestion de portefeuille financier qui permet de connecter des comptes sur différentes plateformes d'investissement (Trade Republic, Binance, Bourse Direct), de télécharger automatiquement l'historique des transactions, et de visualiser les performances financières à travers des graphiques et des métriques détaillées.
+## ⚡ Fonctionnalités
 
-Named after Valhalla, the hall of slain heroes in Norse mythology - your ultimate destination for financial glory.
+- 🔐 **Sécurité** - Chiffrement AES-256-GCM des credentials
+- 📊 **Synchronisation** - Import automatique des transactions
+- 📈 **Performance** - Graphiques interactifs d'évolution du portefeuille
+- 💰 **Analyse** - Métriques détaillées sur les frais et gains/pertes
+- 🔄 **Temps réel** - Mise à jour automatique des prix via Yahoo Finance
 
-## Architecture
-
-Valhafin est composé de deux parties principales :
-
-- **Backend Go** : API RESTful qui gère les scrapers, la base de données PostgreSQL, et la récupération des prix des actifs
-- **Frontend React** : Interface utilisateur moderne avec thème sombre, construite avec React, TypeScript et Tailwind CSS
-
-## Fonctionnalités
-
-- 🔐 Connexion sécurisée aux comptes financiers (Trade Republic, Binance, Bourse Direct)
-- 📊 Synchronisation automatique des transactions
-- 📈 Visualisation des performances avec graphiques interactifs
-- 💰 Métriques détaillées sur les frais
-- 🎨 Interface moderne avec thème sombre et touches de bleu
-- 📱 Design responsive (desktop, tablette, mobile)
-- 🔄 Mise à jour automatique des prix des actifs
-- 📥 Import de données CSV
-
-## Démarrage Rapide
-
-### Prérequis
-
-- Go 1.21+
-- Node.js 20+
-- PostgreSQL 15+ (ou Docker)
-- Make (optionnel, mais recommandé)
-
-### Installation Rapide
-
-```bash
-# 1. Cloner le repo
-git clone https://github.com/your-org/valhafin.git
-cd valhafin
-
-# 2. Installer les dépendances
-make setup
-
-# 3. Copier et configurer .env
-cp .env.example .env
-# Éditer .env avec vos valeurs (voir ci-dessous)
-
-# 4. Démarrer PostgreSQL
-make dev-db
-
-# 5. Démarrer le backend
-make dev-backend
-
-# 6. Dans un autre terminal, démarrer le frontend
-make dev-frontend
-```
-
-### Configuration (.env)
-
-Le backend charge automatiquement le fichier `.env` au démarrage. Créez-le à partir de `.env.example`:
-
-```bash
-cp .env.example .env
-```
-
-Générer une clé de chiffrement sécurisée (32 bytes en hexadécimal):
-
-```bash
-# Avec OpenSSL
-openssl rand -hex 32
-```
-
-Éditer `.env` avec vos configurations:
-
-```env
-DATABASE_URL=postgresql://valhafin:valhafin_dev_password@localhost:5432/valhafin_dev?sslmode=disable
-PORT=8080
-ENCRYPTION_KEY=your_generated_32_byte_hex_key_here
-```
-
-**Important:** Le fichier `.env` est ignoré par git et ne doit JAMAIS être commité.
-
-### Démarrage Manuel (sans Make)
-
-#### 1. Base de données
-
-```bash
-docker-compose -f docker-compose.dev.yml up -d
-```
-
-#### 2. Backend
-
-```bash
-# Le .env est chargé automatiquement
-go run main.go
-```
-
-Le serveur API sera accessible sur http://localhost:8080
-
-#### 3. Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-Le frontend sera accessible sur http://localhost:5173
-
-### Vérifier que tout fonctionne
-
-```bash
-# Health check
-curl http://localhost:8080/health
-
-# Tester tous les endpoints
-make test-api
-```
-
-## Structure du Projet
-
-```
-valhafin/
-├── main.go                    # Point d'entrée du serveur API
-├── internal/                  # Code privé de l'application
-│   ├── api/                   # HTTP handlers, routes, middleware, validation
-│   ├── domain/
-│   │   └── models/            # Modèles métier (Account, Asset, Transaction, etc.)
-│   ├── repository/
-│   │   └── database/          # Couche d'accès aux données PostgreSQL
-│   ├── service/
-│   │   ├── encryption/        # Service de chiffrement AES-256-GCM
-│   │   └── scraper/           # Scrapers pour chaque plateforme
-│   │       ├── traderepublic/
-│   │       ├── binance/
-│   │       └── boursedirect/
-│   ├── config/                # Configuration de l'application
-│   └── utils/                 # Fonctions utilitaires
-└── frontend/                  # Application React
-    ├── src/
-    │   ├── components/        # Composants React
-    │   ├── pages/             # Pages
-    │   ├── services/          # Services API
-    │   ├── hooks/             # Hooks personnalisés
-    │   └── types/             # Types TypeScript
-    └── package.json
-```
-
-**Note**: Le dossier `internal/` suit la convention Go pour le code privé qui ne peut pas être importé par d'autres projets.
-
-## Développement
-
-### Commandes Make
-
-```bash
-# Démarrer PostgreSQL
-make dev-db
-
-# Démarrer le backend (charge automatiquement .env)
-make dev-backend
-
-# Démarrer le frontend
-make dev-frontend
-
-# Tester l'API
-make test-api
-
-# Lancer les tests Go
-make test
-
-# Arrêter PostgreSQL
-make dev-db-stop
-
-# Nettoyer les artifacts de build
-make clean
-```
-
-### Backend
-
-```bash
-# Lancer les tests
-go test ./...
-
-# Build
-go build -o valhafin
-
-# Lancer avec logs
-go run main.go
-```
-
-### Frontend
-
-```bash
-cd frontend
-
-# Lancer les tests
-npm test
-
-# Linting
-npm run lint
-
-# Build de production
-npm run build
-```
-
-## API Endpoints
-
-Le backend expose une API RESTful complète:
-
-**Comptes:**
-- `POST /api/accounts` - Créer un compte
-- `GET /api/accounts` - Lister les comptes
-- `GET /api/accounts/:id` - Détails d'un compte
-- `DELETE /api/accounts/:id` - Supprimer un compte
-- `POST /api/accounts/:id/sync` - Synchroniser un compte
-
-**Transactions:**
-- `GET /api/accounts/:id/transactions` - Transactions d'un compte
-- `GET /api/transactions` - Toutes les transactions
-- `POST /api/transactions/import` - Importer depuis CSV
-
-**Performance:**
-- `GET /api/accounts/:id/performance` - Performance d'un compte
-- `GET /api/performance` - Performance globale
-- `GET /api/assets/:isin/performance` - Performance d'un actif
-
-**Frais:**
-- `GET /api/accounts/:id/fees` - Frais d'un compte
-- `GET /api/fees` - Frais globaux
-
-**Prix:**
-- `GET /api/assets/:isin/price` - Prix actuel d'un actif
-- `GET /api/assets/:isin/history` - Historique des prix
-
-**Health:**
-- `GET /health` - État de l'application
-
-## Plateformes Supportées
+## 🏦 Plateformes Supportées
 
 - ✅ Trade Republic (scraper fonctionnel)
 - 🚧 Binance (en développement)
 - 🚧 Bourse Direct (en développement)
 
-## Documentation
+## 📡 API REST
 
-### Guides de Démarrage
-- **[Guide Simplifié](docs/SIMPLE_STARTUP_GUIDE.md)** - Démarrage rapide en 3 commandes
-- **[Guide Complet](docs/BACKEND_STARTUP_GUIDE.md)** - Guide détaillé du backend
-- **[FAQ](docs/FAQ_BACKEND_STARTUP.md)** - Questions fréquentes
+29 endpoints disponibles - [Documentation complète](docs/API_ENDPOINTS.md)
 
-### Déploiement
-- **[Production](docs/PRODUCTION_DEPLOYMENT.md)** - Guide de déploiement en production
-- **[Docker & CI/CD](docs/PRODUCTION_DEPLOYMENT.md#méthodes-de-déploiement)** - Déploiement avec Docker, Kubernetes, etc.
+### Endpoints par catégorie
 
-### Architecture
-- **[Spécifications](.kiro/specs/portfolio-web-app/)** - Exigences et design complet
-- **[Documentation Frontend](frontend/README.md)** - Guide du frontend React
-- **[Index Documentation](docs/README.md)** - Toute la documentation
+#### 🏦 Gestion des Comptes
+| Endpoint | Méthode | Description |
+|----------|---------|-------------|
+| `/api/accounts` | GET | Lister tous les comptes |
+| `/api/accounts` | POST | Créer un nouveau compte |
+| `/api/accounts/:id` | GET | Détails d'un compte |
+| `/api/accounts/:id` | DELETE | Supprimer un compte |
+| `/api/accounts/:id/sync` | POST | Synchroniser un compte (Binance, Bourse Direct) |
+| `/api/accounts/:id/sync/init` | POST | Initier sync Trade Republic (2FA) |
+| `/api/accounts/:id/sync/complete` | POST | Compléter sync Trade Republic avec code 2FA |
 
-### Résumés des Tâches
-- Consultez le dossier [docs/](docs/) pour les résumés détaillés de chaque tâche implémentée
+#### 💸 Transactions
+| Endpoint | Méthode | Description |
+|----------|---------|-------------|
+| `/api/accounts/:id/transactions` | GET | Transactions d'un compte (filtres, pagination) |
+| `/api/transactions` | GET | Toutes les transactions (tous comptes) |
+| `/api/transactions/:id` | PUT | Modifier une transaction |
+| `/api/transactions/import` | POST | Importer transactions depuis CSV |
 
-## License
+#### 📈 Performance
+| Endpoint | Méthode | Description |
+|----------|---------|-------------|
+| `/api/performance` | GET | Performance globale (tous comptes) |
+| `/api/accounts/:id/performance` | GET | Performance d'un compte |
+| `/api/assets/:isin/performance` | GET | Performance d'un actif spécifique |
+
+#### 💰 Frais
+| Endpoint | Méthode | Description |
+|----------|---------|-------------|
+| `/api/fees` | GET | Métriques de frais globales |
+| `/api/accounts/:id/fees` | GET | Métriques de frais par compte |
+
+#### 📊 Actifs & Prix
+| Endpoint | Méthode | Description |
+|----------|---------|-------------|
+| `/api/assets` | GET | Liste des actifs avec positions |
+| `/api/assets/:isin/price` | GET | Prix actuel d'un actif |
+| `/api/assets/:isin/history` | GET | Historique des prix |
+| `/api/assets/:isin/price/update` | POST | Forcer mise à jour du prix (admin) |
+| `/api/assets/:isin/price/refresh` | POST | Rafraîchir le prix d'un actif |
+| `/api/assets/:isin/symbol` | PUT | Mettre à jour le symbole d'un actif |
+| `/api/assets/symbols/resolve` | POST | Résoudre tous les symboles manquants |
+
+#### 🔍 Recherche de Symboles
+| Endpoint | Méthode | Description |
+|----------|---------|-------------|
+| `/api/symbols/search` | GET | Rechercher un symbole boursier |
+
+#### 🏥 Monitoring
+| Endpoint | Méthode | Description |
+|----------|---------|-------------|
+| `/health` | GET | État de santé de l'application |
+
+## 🏗️ Architecture
+
+**Backend Go** - API RESTful avec PostgreSQL
+- Scrapers pour Trade Republic, Binance, Bourse Direct
+- Service de chiffrement et gestion sécurisée des credentials
+- Calcul de performance et analyse des frais
+- Scheduler pour mises à jour automatiques
+
+**Frontend React** - Interface utilisateur moderne
+- React 19 + TypeScript + Tailwind CSS
+- TanStack Query pour la gestion d'état
+- Recharts pour les graphiques
+- Design responsive mobile-first
+
+**Base de Données PostgreSQL** - 7 tables principales
+- `accounts` - Comptes financiers connectés
+- `assets` - Catalogue des actifs (actions, ETF, crypto)
+- `asset_prices` - Historique des prix
+- `transactions_*` - Transactions par plateforme (Trade Republic, Binance, Bourse Direct)
+- [Documentation complète du schéma](docs/DATABASE_SCHEMA.md)
+
+## 🚀 Démarrage Rapide
+
+### Installation via Release
+
+Déploiement rapide avec Docker Compose à partir d'une release GitHub:
+
+```bash
+# 1. Télécharger la dernière release
+wget https://github.com/your-org/valhafin/releases/latest/download/valhafin-latest.tar.gz
+tar -xzf valhafin-latest.tar.gz
+cd valhafin
+
+# 2. Configurer l'environnement
+cp .env.example .env
+# Générer les secrets
+openssl rand -hex 32  # Copier dans ENCRYPTION_KEY
+openssl rand -base64 32  # Copier dans POSTGRES_PASSWORD
+# Éditer .env avec vos valeurs
+
+# 3. Déployer avec Docker Compose
+chmod +x deploy.sh
+./deploy.sh
+```
+
+**Accès:**
+- Frontend: http://localhost:80
+- Backend API: http://localhost:8080
+
+### Vérification
+
+```bash
+curl http://localhost:8080/health
+# Réponse: {"status":"healthy","database":"connected"}
+```
+
+## 📚 Documentation
+
+- **[Guide de Démarrage](docs/SIMPLE_STARTUP_GUIDE.md)** - Installation et configuration
+- **[Guide Développeur](docs/DEVELOPER_GUIDE.md)** - Architecture, conventions, tests
+- **[API Reference](docs/API_ENDPOINTS.md)** - Documentation des 29 endpoints
+- **[Schéma Base de Données](docs/DATABASE_SCHEMA.md)** - Tables PostgreSQL et relations
+- **[Déploiement Production](docs/PRODUCTION_DEPLOYMENT.md)** - Docker, CI/CD, releases
+
+## 📁 Structure du Projet
+
+```
+valhafin/
+├── main.go                    # Point d'entrée
+├── internal/                  # Backend Go
+│   ├── api/                   # Handlers HTTP, routes, middleware
+│   ├── domain/models/         # Modèles métier
+│   ├── repository/database/   # Accès PostgreSQL
+│   └── service/               # Logique métier
+│       ├── encryption/        # Chiffrement AES-256-GCM
+│       ├── scraper/           # Trade Republic, Binance, Bourse Direct
+│       ├── price/             # Yahoo Finance
+│       ├── performance/       # Calculs de performance
+│       └── scheduler/         # Tâches automatiques
+└── frontend/                  # Frontend React
+    └── src/
+        ├── components/        # Composants UI
+        ├── pages/             # Pages de l'app
+        ├── services/          # Client API
+        └── hooks/             # React Query hooks
+```
+
+## 🛠️ Développement
+
+### Prérequis
+
+- Go 1.21+
+- Node.js 20+
+- Docker & Docker Compose
+- Make (recommandé)
+
+### Installation
+
+Installation complète avec code source pour développer:
+
+```bash
+# 1. Cloner et installer
+git clone https://github.com/your-org/valhafin.git
+cd valhafin
+make setup
+
+# 2. Configurer l'environnement
+cp .env.example .env
+openssl rand -hex 32  # Copier dans ENCRYPTION_KEY
+# Éditer .env avec la clé générée
+
+# 3. Démarrer l'application
+make dev-db        # Terminal 1: PostgreSQL
+make dev-backend   # Terminal 2: Backend (http://localhost:8080)
+make dev-frontend  # Terminal 3: Frontend (http://localhost:5173)
+```
+
+### Commandes principales
+
+```bash
+# Développement
+make dev-db          # Démarrer PostgreSQL
+make dev-backend     # Démarrer le backend
+make dev-frontend    # Démarrer le frontend
+
+# Tests
+make test            # Tests Go
+make test-api        # Tests API endpoints
+cd frontend && npm test  # Tests React
+
+# Build
+make build           # Compiler le backend
+cd frontend && npm run build  # Compiler le frontend
+
+# Nettoyage
+make clean           # Supprimer les artifacts
+```
+
+## 📄 License
 
 MIT
