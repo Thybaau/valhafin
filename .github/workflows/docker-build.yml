@@ -142,6 +142,22 @@ jobs:
           # Set lowercase repository name
           echo "repo=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
 
+      - name: Tag images for docker-compose
+        run: |
+          # Find the actual image tags and retag them
+          BACKEND_IMAGE=$(docker images --format "{{.Repository}}:{{.Tag}}" | grep "backend" | head -1)
+          FRONTEND_IMAGE=$(docker images --format "{{.Repository}}:{{.Tag}}" | grep "frontend" | head -1)
+
+          echo "Found backend image: $BACKEND_IMAGE"
+          echo "Found frontend image: $FRONTEND_IMAGE"
+
+          # Tag them with the expected names
+          docker tag $BACKEND_IMAGE ghcr.io/thybaau/valhafin/backend:${{ steps.meta.outputs.version }}
+          docker tag $FRONTEND_IMAGE ghcr.io/thybaau/valhafin/frontend:${{ steps.meta.outputs.version }}
+
+          echo "=== Tagged images ==="
+          docker image ls | grep valhafin
+
       - name: Create test docker-compose
         run: |
           ENCRYPTION_KEY=$(openssl rand -hex 32)
