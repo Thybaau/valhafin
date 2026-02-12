@@ -1,0 +1,224 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-binaries:
+    name: Build Binaries
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          # Linux
+          - goos: linux
+            goarch: amd64
+            output: valhafin-backend-linux-amd64-${{ github.ref_name }}
+          - goos: linux
+            goarch: arm64
+            output: valhafin-backend-linux-arm64-${{ github.ref_name }}
+          # macOS
+          - goos: darwin
+            goarch: amd64
+            output: valhafin-backend-darwin-amd64-${{ github.ref_name }}
+          - goos: darwin
+            goarch: arm64
+            output: valhafin-backend-darwin-arm64-${{ github.ref_name }}
+          # Windows
+          - goos: windows
+            goarch: amd64
+            output: valhafin-backend-windows-amd64-${{ github.ref_name }}.exe
+          - goos: windows
+            goarch: arm64
+            output: valhafin-backend-windows-arm64-${{ github.ref_name }}.exe
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.21"
+
+      - name: Build binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 0
+        run: |
+          go build -ldflags="-w -s -X main.Version=${{ github.ref_name }}" -o ${{ matrix.output }} .
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.output }}
+          path: ${{ matrix.output }}
+
+  build-frontend:
+    name: Build Frontend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Create frontend archive
+        run: |
+          cd frontend/dist
+          tar -czf ../../valhafin-frontend-${{ github.ref_name }}.tar.gz .
+
+      - name: Upload frontend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: valhafin-frontend-${{ github.ref_name }}.tar.gz
+          path: valhafin-frontend-${{ github.ref_name }}.tar.gz
+
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [build-binaries, build-frontend]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare release assets
+        run: |
+          mkdir -p release-assets
+
+          # === 1. Docker deployment package ===
+          mkdir -p docker-package
+          cp docker-compose.yml docker-package/
+          cp .env.example docker-package/
+          cp deploy.sh docker-package/
+          chmod +x docker-package/deploy.sh
+
+          # Create Docker package README
+          cat > docker-package/README.md << 'DOCKEREOF'
+          # Valhafin Docker Deployment
+
+          ## Quick Start
+
+          1. Configure environment:
+             ```bash
+             cp .env.example .env
+             nano .env  # Edit with your passwords
+             ```
+
+          2. Deploy:
+             ```bash
+             chmod +x deploy.sh
+             ./deploy.sh
+             ```
+
+          3. Access: http://localhost:8080
+
+          ## Requirements
+          - Docker & Docker Compose
+          - 2GB RAM minimum
+          DOCKEREOF
+
+          tar -czf release-assets/valhafin-docker-${{ github.ref_name }}.tar.gz -C docker-package .
+
+          # === 2. Move binaries to release-assets (individual files) ===
+          find artifacts -type f -name "valhafin-backend-linux-amd64-*" -exec mv {} release-assets/ \;
+          find artifacts -type f -name "valhafin-backend-linux-arm64-*" -exec mv {} release-assets/ \;
+          find artifacts -type f -name "valhafin-backend-darwin-amd64-*" -exec mv {} release-assets/ \;
+          find artifacts -type f -name "valhafin-backend-darwin-arm64-*" -exec mv {} release-assets/ \;
+          find artifacts -type f -name "valhafin-backend-windows-amd64-*.exe" -exec mv {} release-assets/ \;
+          find artifacts -type f -name "valhafin-backend-windows-arm64-*.exe" -exec mv {} release-assets/ \;
+
+          # === 3. Move frontend package ===
+          find artifacts -type f -name "valhafin-frontend-*.tar.gz" -exec mv {} release-assets/ \;
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          cat > release_notes.md << 'EOF'
+          ## Valhafin ${{ github.ref_name }}
+
+          ### Installation
+
+          #### 🐳 Docker Deployment (Recommended)
+
+          1. Download `valhafin-docker-${{ github.ref_name }}.tar.gz`
+          2. Extract: `tar -xzf valhafin-docker-${{ github.ref_name }}.tar.gz`
+          3. Copy `.env.example` to `.env` and configure
+          4. Run: `./deploy.sh`
+
+          #### 💻 Backend Binary Installation
+
+          Download the appropriate backend binary for your platform:
+          - **Linux Intel/AMD**: `valhafin-backend-linux-amd64-${{ github.ref_name }}`
+          - **Linux ARM**: `valhafin-backend-linux-arm64-${{ github.ref_name }}`
+          - **macOS Intel**: `valhafin-backend-darwin-amd64-${{ github.ref_name }}`
+          - **macOS Apple Silicon**: `valhafin-backend-darwin-arm64-${{ github.ref_name }}`
+          - **Windows Intel/AMD**: `valhafin-backend-windows-amd64-${{ github.ref_name }}.exe`
+          - **Windows ARM**: `valhafin-backend-windows-arm64-${{ github.ref_name }}.exe`
+
+          Make the binary executable (Linux/macOS):
+          ```bash
+          chmod +x valhafin-backend-*
+          ./valhafin-backend-*
+          ```
+
+          #### 🎨 Frontend
+
+          Download `valhafin-frontend-${{ github.ref_name }}.tar.gz` and extract to serve with your web server.
+
+          ### Docker Images
+
+          Docker images are available on GitHub Container Registry:
+          - Backend: `ghcr.io/${{ github.repository }}/backend:${{ github.ref_name }}`
+          - Frontend: `ghcr.io/${{ github.repository }}/frontend:${{ github.ref_name }}`
+
+          ### Configuration
+
+          See `.env.example` for required environment variables.
+
+          ### What's Changed
+
+          EOF
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            release-assets/valhafin-docker-${{ github.ref_name }}.tar.gz
+            release-assets/valhafin-backend-linux-amd64-${{ github.ref_name }}
+            release-assets/valhafin-backend-linux-arm64-${{ github.ref_name }}
+            release-assets/valhafin-backend-darwin-amd64-${{ github.ref_name }}
+            release-assets/valhafin-backend-darwin-arm64-${{ github.ref_name }}
+            release-assets/valhafin-backend-windows-amd64-${{ github.ref_name }}.exe
+            release-assets/valhafin-backend-windows-arm64-${{ github.ref_name }}.exe
+            release-assets/valhafin-frontend-${{ github.ref_name }}.tar.gz
+          body_path: release_notes.md
+          draft: false
+          prerelease: false
+          generate_release_notes: true

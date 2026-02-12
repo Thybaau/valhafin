@@ -12,6 +12,7 @@ http://localhost:8080/api
 - [Performance](#performance)
 - [Fees](#fees)
 - [Assets](#assets)
+- [Symbol Search](#symbol-search)
 
 ---
 
@@ -509,9 +510,9 @@ http://localhost:8080/api
 ---
 
 ### POST `/api/assets/{isin}/price/update`
-**Description:** Force la mise à jour du prix d'un actif (admin/debug)
+**Description:** Force la mise à jour du prix d'un actif depuis Yahoo Finance
 
-**Utilisé par:** Debug, admin tools
+**Utilisé par:** Admin tools, debug
 
 **Paramètres:**
 - `isin` (path): ISIN de l'actif
@@ -529,12 +530,117 @@ http://localhost:8080/api
 
 ---
 
+### POST `/api/assets/{isin}/price/refresh`
+**Description:** Rafraîchit le prix d'un actif en forçant une nouvelle récupération
+
+**Utilisé par:** Page Assets, bouton "Refresh Price"
+
+**Paramètres:**
+- `isin` (path): ISIN de l'actif
+
+**Réponse:**
+```json
+{
+  "isin": "IE00B4ND3602",
+  "price": 77.71,
+  "currency": "EUR",
+  "timestamp": "2024-01-15T10:30:00Z",
+  "message": "Price refreshed successfully"
+}
+```
+
+---
+
+### PUT `/api/assets/{isin}/symbol`
+**Description:** Met à jour le symbole boursier d'un actif
+
+**Utilisé par:** Page Assets, modal "Edit Symbol"
+
+**Paramètres:**
+- `isin` (path): ISIN de l'actif
+
+**Body:**
+```json
+{
+  "symbol": "IGLN.L"
+}
+```
+
+**Réponse:**
+```json
+{
+  "isin": "IE00B4ND3602",
+  "symbol": "IGLN.L",
+  "message": "Symbol updated successfully"
+}
+```
+
+---
+
+### POST `/api/assets/symbols/resolve`
+**Description:** Résout automatiquement tous les symboles manquants pour les actifs
+
+**Utilisé par:** Admin tools, maintenance
+
+**Réponse:**
+```json
+{
+  "resolved": 15,
+  "failed": 2,
+  "message": "Symbol resolution completed",
+  "details": [
+    {
+      "isin": "IE00B4ND3602",
+      "symbol": "IGLN.L",
+      "status": "resolved"
+    }
+  ]
+}
+```
+
+---
+
+## Symbol Search
+
+### GET `/api/symbols/search`
+**Description:** Recherche un symbole boursier par nom ou ticker
+
+**Utilisé par:** Modal "Symbol Search", autocomplete
+
+**Paramètres:**
+- `query` (query, required): Terme de recherche (nom ou ticker)
+- `limit` (query, optional): Nombre de résultats (défaut: 10)
+
+**Réponse:**
+```json
+{
+  "results": [
+    {
+      "symbol": "IGLN.L",
+      "name": "iShares Physical Gold ETC",
+      "exchange": "LSE",
+      "type": "ETF",
+      "currency": "GBP"
+    },
+    {
+      "symbol": "GLD",
+      "name": "SPDR Gold Shares",
+      "exchange": "NYSE",
+      "type": "ETF",
+      "currency": "USD"
+    }
+  ]
+}
+```
+
+---
+
 ## Résumé
 
-**Total: 21 endpoints**
+**Total: 29 endpoints**
 
-- ✅ **19 utilisés par le frontend**
-- ✅ **2 utilisés pour monitoring/debug** (`/health`, `/assets/{isin}/price/update`)
+- ✅ **26 utilisés par le frontend**
+- ✅ **3 utilisés pour admin/debug** (`/health`, `/assets/{isin}/price/update`, `/assets/symbols/resolve`)
 
 **Répartition:**
 - Health: 1 endpoint
@@ -542,4 +648,5 @@ http://localhost:8080/api
 - Transactions: 4 endpoints
 - Performance: 3 endpoints
 - Fees: 2 endpoints
-- Assets: 4 endpoints
+- Assets: 8 endpoints
+- Symbol Search: 1 endpoint
