@@ -161,6 +161,7 @@ jobs:
 
             backend:
               image: ghcr.io/thybaau/valhafin/backend:${{ steps.meta.outputs.version }}
+              pull_policy: never
               environment:
                 DATABASE_URL: postgres://test:test_password_123@postgres:5432/test?sslmode=disable
                 PORT: 8080
@@ -179,6 +180,7 @@ jobs:
 
             frontend:
               image: ghcr.io/thybaau/valhafin/frontend:${{ steps.meta.outputs.version }}
+              pull_policy: never
               environment:
                 VITE_API_URL: http://localhost:8080
               ports:
