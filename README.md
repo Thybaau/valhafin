@@ -1,5 +1,13 @@
 # Valhafin 🔥⚔️
 
+[![Tests & Security](https://github.com/Thybaau/valhafin/actions/workflows/tests-and-security.yml/badge.svg)](https://github.com/Thybaau/valhafin/actions/workflows/tests-and-security.yml)
+[![Docker Build](https://github.com/Thybaau/valhafin/actions/workflows/docker-build.yml/badge.svg)](https://github.com/Thybaau/valhafin/actions/workflows/docker-build.yml)
+[![Release](https://github.com/Thybaau/valhafin/actions/workflows/release.yml/badge.svg)](https://github.com/Thybaau/valhafin/actions/workflows/release.yml)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/Thybaau/valhafin)](https://github.com/Thybaau/valhafin/blob/main/go.mod)
+[![License](https://img.shields.io/github/license/Thybaau/valhafin)](https://github.com/Thybaau/valhafin/blob/main/LICENSE)
+[![Latest Release](https://img.shields.io/github/v/release/Thybaau/valhafin)](https://github.com/Thybaau/valhafin/releases/latest)
+
+
 **Your Financial Valhalla** - *Where wealth warriors ascend*
 
 Application web de gestion de portefeuille financier qui connecte vos comptes d'investissement (Trade Republic, Binance, Bourse Direct), synchronise automatiquement vos transactions, et visualise vos performances financières avec des graphiques interactifs.
