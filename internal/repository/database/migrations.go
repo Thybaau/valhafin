@@ -236,8 +236,15 @@ var migrations = []Migration{
 
 // RunMigrations executes all pending migrations
 func (db *DB) RunMigrations() error {
-	// First, ensure the migrations table exists
-	_, err := db.Exec(migrations[len(migrations)-1].Up)
+	// First, ensure the migrations table exists (migration #7)
+	createMigrationsTable := `
+		CREATE TABLE IF NOT EXISTS schema_migrations (
+			version INT PRIMARY KEY,
+			name VARCHAR(255) NOT NULL,
+			applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		);
+	`
+	_, err := db.Exec(createMigrationsTable)
 	if err != nil {
 		return fmt.Errorf("failed to create migrations table: %w", err)
 	}
