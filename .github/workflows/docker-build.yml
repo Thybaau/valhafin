@@ -127,7 +127,8 @@ jobs:
         run: |
           docker load --input /tmp/backend-image.tar
           docker load --input /tmp/frontend-image.tar
-          docker image ls
+          echo "=== Loaded images ==="
+          docker image ls | grep valhafin
 
       - name: Extract version tag
         id: meta
@@ -140,11 +141,6 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           # Set lowercase repository name
           echo "repo=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
-
-      - name: Tag images for testing
-        run: |
-          docker tag ${{ env.REGISTRY }}/${{ steps.meta.outputs.repo }}/backend:${{ steps.meta.outputs.version }} ghcr.io/thybaau/valhafin/backend:${{ steps.meta.outputs.version }}
-          docker tag ${{ env.REGISTRY }}/${{ steps.meta.outputs.repo }}/frontend:${{ steps.meta.outputs.version }} ghcr.io/thybaau/valhafin/frontend:${{ steps.meta.outputs.version }}
 
       - name: Create test docker-compose
         run: |
