@@ -165,7 +165,7 @@ jobs:
         continue-on-error: true
 
       - name: Upload Trivy results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: "trivy-go-results.sarif"
         if: always()
@@ -182,7 +182,7 @@ jobs:
         continue-on-error: true
 
       - name: Upload Trivy frontend results
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: "trivy-frontend-results.sarif"
         if: always()
