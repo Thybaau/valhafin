@@ -2,7 +2,7 @@
 
 ## Backend
 
-- **Language**: Go 1.21+
+- **Language**: Go 1.23+
 - **Web Framework**: Gorilla Mux (routing), standard library HTTP server
 - **Database**: PostgreSQL 15+ with sqlx for queries
 - **Configuration**: Viper + godotenv for environment management

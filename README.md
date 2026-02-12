@@ -168,7 +168,7 @@ valhafin/
 
 ### Prérequis
 
-- Go 1.21+
+- Go 1.23+
 - Node.js 20+
 - Docker & Docker Compose
 - Make (recommandé)
