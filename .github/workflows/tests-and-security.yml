@@ -56,6 +56,33 @@ jobs:
           PORT: 8080
         run: go test -v -race -coverprofile=coverage.out ./...
 
+      - name: Build backend
+        run: go build -o valhafin .
+
+      - name: Test backend startup
+        env:
+          DATABASE_URL: postgres://valhafin:valhafin_dev_password@localhost:5432/valhafin_dev?sslmode=disable
+          PORT: 8080
+        run: |
+          # Start backend in background
+          ./valhafin &
+          BACKEND_PID=$!
+
+          # Wait for backend to start (max 30 seconds)
+          echo "Waiting for backend to start..."
+          for i in {1..30}; do
+            if curl -f http://localhost:8080/health > /dev/null 2>&1; then
+              echo "✅ Backend started successfully"
+              kill $BACKEND_PID
+              exit 0
+            fi
+            sleep 1
+          done
+
+          echo "❌ Backend failed to start"
+          kill $BACKEND_PID || true
+          exit 1
+
       - name: Generate coverage report
         run: go tool cover -html=coverage.out -o coverage.html
 
