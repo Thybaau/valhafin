@@ -200,19 +200,31 @@ jobs:
 
       - name: Start test stack
         run: |
-          docker compose -f docker-compose.test.yml up -d
-          echo "Waiting for services to be ready..."
+          docker compose -f docker-compose.test.yml up -d || true
+          echo "Waiting for services to start..."
           sleep 10
 
-      - name: Check container status
+      - name: Check container status and logs
+        if: always()
         run: |
-          docker compose -f docker-compose.test.yml ps
-          echo "=== Backend logs ==="
-          docker compose -f docker-compose.test.yml logs backend
-          echo "=== Frontend logs ==="
-          docker compose -f docker-compose.test.yml logs frontend
+          echo "=== Container status ==="
+          docker compose -f docker-compose.test.yml ps -a
+
+          echo ""
           echo "=== Postgres logs ==="
-          docker compose -f docker-compose.test.yml logs postgres
+          docker compose -f docker-compose.test.yml logs postgres || true
+
+          echo ""
+          echo "=== Backend logs ==="
+          docker compose -f docker-compose.test.yml logs backend || true
+
+          echo ""
+          echo "=== Frontend logs ==="
+          docker compose -f docker-compose.test.yml logs frontend || true
+
+          echo ""
+          echo "=== Docker inspect backend ==="
+          docker inspect valhafin-backend-1 || true
 
       - name: Run smoke tests
         run: |
