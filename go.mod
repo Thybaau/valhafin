@@ -9,7 +9,7 @@ require (
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/joho/godotenv v1.5.1
 	github.com/leanovate/gopter v0.2.11
-	github.com/lib/pq v1.11.1
+	github.com/lib/pq v1.11.2
 	github.com/spf13/viper v1.21.0
 )
 
