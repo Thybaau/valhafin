@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { X, Search, Check, AlertCircle } from 'lucide-react';
+import apiClient from '../../services/api';
 
 interface SymbolSearchResult {
   symbol: string;
@@ -42,21 +43,11 @@ export default function SymbolSearchModal({ isOpen, onClose, asset, onSymbolSele
     setError(null);
 
     try {
-      const response = await fetch(`http://localhost:8080/api/symbols/search?query=${encodeURIComponent(searchQuery)}`);
-      
-      const data = await response.json();
-      
-      if (!response.ok) {
-        // Display the error message from the API
-        const errorMessage = data.error?.message || 'Search failed';
-        setError(errorMessage);
-        setResults([]);
-        return;
-      }
-
-      setResults(data.results || []);
-    } catch (err) {
-      setError('Failed to search symbols. Please try again.');
+      const response = await apiClient.get(`/symbols/search?query=${encodeURIComponent(searchQuery)}`);
+      setResults(response.data.results || []);
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.error?.message || 'Failed to search symbols. Please try again.';
+      setError(errorMessage);
       console.error('Search error:', err);
     } finally {
       setLoading(false);
@@ -68,20 +59,10 @@ export default function SymbolSearchModal({ isOpen, onClose, asset, onSymbolSele
     setError(null);
 
     try {
-      const response = await fetch(`http://localhost:8080/api/assets/${asset.isin}/symbol`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          symbol: symbol,
-          symbol_verified: true,
-        }),
+      await apiClient.put(`/assets/${asset.isin}/symbol`, {
+        symbol: symbol,
+        symbol_verified: true,
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to update symbol');
-      }
 
       onSymbolSelected();
       onClose();
@@ -98,20 +79,10 @@ export default function SymbolSearchModal({ isOpen, onClose, asset, onSymbolSele
     setError(null);
 
     try {
-      const response = await fetch(`http://localhost:8080/api/assets/${asset.isin}/symbol`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          symbol: '',
-          symbol_verified: true,
-        }),
+      await apiClient.put(`/assets/${asset.isin}/symbol`, {
+        symbol: '',
+        symbol_verified: true,
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to mark as unavailable');
-      }
 
       onSymbolSelected();
       onClose();
