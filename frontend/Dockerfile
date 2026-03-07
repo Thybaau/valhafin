@@ -42,15 +42,15 @@ server {
     add_header X-XSS-Protection "1; mode=block" always;
     add_header Referrer-Policy "no-referrer-when-downgrade" always;
 
-    # SPA routing - serve index.html for all routes
-    location / {
-        try_files \$uri \$uri/ /index.html;
-    }
-
-    # Cache static assets
+    # Cache static assets (must be before / location)
     location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
         expires 1y;
         add_header Cache-Control "public, immutable";
+    }
+
+    # SPA routing - serve index.html for all routes
+    location / {
+        try_files \$uri /index.html;
     }
 
     # Health check endpoint
