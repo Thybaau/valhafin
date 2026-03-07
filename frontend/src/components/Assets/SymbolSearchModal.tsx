@@ -45,8 +45,10 @@ export default function SymbolSearchModal({ isOpen, onClose, asset, onSymbolSele
     try {
       const response = await apiClient.get(`/symbols/search?query=${encodeURIComponent(searchQuery)}`);
       setResults(response.data.results || []);
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.error?.message || 'Failed to search symbols. Please try again.';
+    } catch (err) {
+      const errorMessage = err instanceof Error && 'response' in err 
+        ? (err as { response?: { data?: { error?: { message?: string } } } }).response?.data?.error?.message || 'Failed to search symbols. Please try again.'
+        : 'Failed to search symbols. Please try again.';
       setError(errorMessage);
       console.error('Search error:', err);
     } finally {
