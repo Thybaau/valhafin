@@ -11,6 +11,7 @@ import (
 	"valhafin/internal/service/sync"
 
 	"github.com/gorilla/mux"
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 // Services holds the application services
@@ -63,6 +64,9 @@ func SetupRoutesWithVersion(db *database.DB, encryptionService *encryption.Encry
 
 	// Health check
 	router.HandleFunc("/health", handler.HealthCheckHandler).Methods("GET")
+
+	// Swagger documentation
+	router.PathPrefix("/swagger/").Handler(httpSwagger.WrapHandler)
 
 	// Handle OPTIONS requests globally for CORS preflight
 	router.Methods("OPTIONS").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
