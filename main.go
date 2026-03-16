@@ -17,8 +17,17 @@ import (
 	encryptionsvc "valhafin/internal/service/encryption"
 	"valhafin/internal/service/scheduler"
 
+	_ "valhafin/internal/docs"
+
 	"github.com/joho/godotenv"
 )
+
+// @title Valhafin API
+// @version 1.0
+// @description API de gestion de portefeuille financier - synchronisation de comptes, suivi de performance et analyse des frais.
+// @host localhost:8080
+// @BasePath /
+// @schemes http
 
 var (
 	// Version is set at build time

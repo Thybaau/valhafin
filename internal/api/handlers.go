@@ -83,6 +83,13 @@ func respondError(w http.ResponseWriter, status int, code, message string, detai
 }
 
 // HealthCheckHandler handles health check requests
+// @Summary Vérifier l'état de santé de l'application
+// @Description Retourne le statut de l'application et de la base de données
+// @Tags monitoring
+// @Produce json
+// @Success 200 {object} map[string]interface{} "Application healthy"
+// @Failure 503 {object} map[string]interface{} "Application unhealthy"
+// @Router /health [get]
 func (h *Handler) HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	// Check database connection
 	if err := h.DB.Ping(); err != nil {
@@ -111,6 +118,16 @@ type CreateAccountRequest struct {
 }
 
 // CreateAccountHandler creates a new account with encrypted credentials
+// @Summary Créer un nouveau compte
+// @Description Crée un compte financier avec des credentials chiffrés
+// @Tags accounts
+// @Accept json
+// @Produce json
+// @Param account body CreateAccountRequest true "Données du compte"
+// @Success 201 {object} models.Account
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/accounts [post]
 func (h *Handler) CreateAccountHandler(w http.ResponseWriter, r *http.Request) {
 	var req CreateAccountRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -180,6 +197,13 @@ func (h *Handler) CreateAccountHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetAccountsHandler lists all accounts
+// @Summary Lister tous les comptes
+// @Description Récupère la liste de tous les comptes financiers
+// @Tags accounts
+// @Produce json
+// @Success 200 {array} models.Account
+// @Failure 500 {object} ErrorResponse
+// @Router /api/accounts [get]
 func (h *Handler) GetAccountsHandler(w http.ResponseWriter, r *http.Request) {
 	accounts, err := h.DB.GetAllAccounts()
 	if err != nil {
@@ -191,6 +215,16 @@ func (h *Handler) GetAccountsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetAccountHandler retrieves a specific account by ID
+// @Summary Récupérer un compte par ID
+// @Description Retourne les détails d'un compte financier
+// @Tags accounts
+// @Produce json
+// @Param id path string true "ID du compte"
+// @Success 200 {object} models.Account
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/accounts/{id} [get]
 func (h *Handler) GetAccountHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	accountID := vars["id"]
@@ -214,6 +248,16 @@ func (h *Handler) GetAccountHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteAccountHandler deletes an account and all associated data (cascade)
+// @Summary Supprimer un compte
+// @Description Supprime un compte et toutes ses données associées
+// @Tags accounts
+// @Produce json
+// @Param id path string true "ID du compte"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/accounts/{id} [delete]
 func (h *Handler) DeleteAccountHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	accountID := vars["id"]
@@ -246,6 +290,16 @@ func (h *Handler) DeleteAccountHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // SyncAccountHandler triggers synchronization for an account
+// @Summary Synchroniser un compte
+// @Description Déclenche la synchronisation des transactions pour un compte (Binance, Bourse Direct)
+// @Tags sync
+// @Produce json
+// @Param id path string true "ID du compte"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/accounts/{id}/sync [post]
 func (h *Handler) SyncAccountHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	accountID := vars["id"]
@@ -296,6 +350,16 @@ type InitSyncResponse struct {
 }
 
 // InitSyncHandler initiates synchronization for Trade Republic (triggers 2FA)
+// @Summary Initier la synchronisation Trade Republic
+// @Description Déclenche l'authentification 2FA pour Trade Republic
+// @Tags sync
+// @Produce json
+// @Param id path string true "ID du compte"
+// @Success 200 {object} InitSyncResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/accounts/{id}/sync/init [post]
 func (h *Handler) InitSyncHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	accountID := vars["id"]
@@ -401,6 +465,18 @@ type CompleteSyncRequest struct {
 }
 
 // CompleteSyncHandler completes synchronization with 2FA code
+// @Summary Compléter la synchronisation Trade Republic avec le code 2FA
+// @Description Finalise la synchronisation en fournissant le code de vérification
+// @Tags sync
+// @Accept json
+// @Produce json
+// @Param id path string true "ID du compte"
+// @Param body body CompleteSyncRequest true "Process ID et code 2FA"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/accounts/{id}/sync/complete [post]
 func (h *Handler) CompleteSyncHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	accountID := vars["id"]
@@ -532,6 +608,24 @@ type TransactionResponse struct {
 }
 
 // GetAccountTransactionsHandler retrieves transactions for a specific account with filters
+// @Summary Récupérer les transactions d'un compte
+// @Description Retourne les transactions paginées et filtrées d'un compte
+// @Tags transactions
+// @Produce json
+// @Param id path string true "ID du compte"
+// @Param start_date query string false "Date de début (YYYY-MM-DD)"
+// @Param end_date query string false "Date de fin (YYYY-MM-DD)"
+// @Param asset query string false "Filtrer par ISIN"
+// @Param type query string false "Filtrer par type (buy, sell, dividend, fee)"
+// @Param page query int false "Numéro de page" default(1)
+// @Param limit query int false "Nombre de résultats par page" default(50)
+// @Param sort_by query string false "Trier par champ (timestamp, amount)"
+// @Param sort_order query string false "Ordre de tri (asc, desc)"
+// @Success 200 {object} TransactionResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/accounts/{id}/transactions [get]
 func (h *Handler) GetAccountTransactionsHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	accountID := vars["id"]
@@ -604,6 +698,22 @@ func (h *Handler) GetAccountTransactionsHandler(w http.ResponseWriter, r *http.R
 }
 
 // GetAllTransactionsHandler retrieves all transactions across all accounts with filters
+// @Summary Récupérer toutes les transactions
+// @Description Retourne les transactions paginées de tous les comptes
+// @Tags transactions
+// @Produce json
+// @Param start_date query string false "Date de début (YYYY-MM-DD)"
+// @Param end_date query string false "Date de fin (YYYY-MM-DD)"
+// @Param asset query string false "Filtrer par ISIN"
+// @Param type query string false "Filtrer par type (buy, sell, dividend, fee)"
+// @Param page query int false "Numéro de page" default(1)
+// @Param limit query int false "Nombre de résultats par page" default(50)
+// @Param sort_by query string false "Trier par champ (timestamp, amount)"
+// @Param sort_order query string false "Ordre de tri (asc, desc)"
+// @Success 200 {object} TransactionResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/transactions [get]
 func (h *Handler) GetAllTransactionsHandler(w http.ResponseWriter, r *http.Request) {
 	// Parse query parameters
 	filter := h.parseTransactionFilters(r)
@@ -755,6 +865,18 @@ type ImportSummary struct {
 }
 
 // UpdateTransactionHandler updates an existing transaction
+// @Summary Modifier une transaction
+// @Description Met à jour une transaction existante
+// @Tags transactions
+// @Accept json
+// @Produce json
+// @Param id path string true "ID de la transaction"
+// @Param transaction body models.Transaction true "Données de la transaction"
+// @Success 200 {object} models.Transaction
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/transactions/{id} [put]
 func (h *Handler) UpdateTransactionHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	transactionID := vars["id"]
@@ -797,6 +919,18 @@ func (h *Handler) UpdateTransactionHandler(w http.ResponseWriter, r *http.Reques
 }
 
 // ImportCSVHandler imports transactions from a CSV file
+// @Summary Importer des transactions depuis un CSV
+// @Description Importe des transactions à partir d'un fichier CSV avec déduplication
+// @Tags transactions
+// @Accept multipart/form-data
+// @Produce json
+// @Param account_id formData string true "ID du compte"
+// @Param file formData file true "Fichier CSV"
+// @Success 200 {object} ImportSummary
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/transactions/import [post]
 func (h *Handler) ImportCSVHandler(w http.ResponseWriter, r *http.Request) {
 	// Parse multipart form (max 10MB)
 	if err := r.ParseMultipartForm(10 << 20); err != nil {
@@ -1108,6 +1242,17 @@ func (h *Handler) parseCSVRow(row []string, columnIndices map[string]int, accoun
 // Performance handlers
 
 // GetAccountPerformanceHandler retrieves performance metrics for a specific account
+// @Summary Performance d'un compte
+// @Description Calcule les métriques de performance pour un compte spécifique
+// @Tags performance
+// @Produce json
+// @Param id path string true "ID du compte"
+// @Param period query string false "Période (1m, 3m, 1y, all)" default(1y)
+// @Success 200 {object} performance.Performance
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/accounts/{id}/performance [get]
 func (h *Handler) GetAccountPerformanceHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	accountID := vars["id"]
@@ -1154,6 +1299,15 @@ func (h *Handler) GetAccountPerformanceHandler(w http.ResponseWriter, r *http.Re
 }
 
 // GetGlobalPerformanceHandler retrieves performance metrics across all accounts
+// @Summary Performance globale
+// @Description Calcule les métriques de performance pour tous les comptes
+// @Tags performance
+// @Produce json
+// @Param period query string false "Période (1m, 3m, 1y, all)" default(1y)
+// @Success 200 {object} performance.Performance
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/performance [get]
 func (h *Handler) GetGlobalPerformanceHandler(w http.ResponseWriter, r *http.Request) {
 	// Get period from query parameter (default: 1y)
 	period := r.URL.Query().Get("period")
@@ -1181,6 +1335,17 @@ func (h *Handler) GetGlobalPerformanceHandler(w http.ResponseWriter, r *http.Req
 }
 
 // GetAssetPerformanceHandler retrieves performance metrics for a specific asset
+// @Summary Performance d'un actif
+// @Description Calcule les métriques de performance pour un actif spécifique
+// @Tags performance
+// @Produce json
+// @Param isin path string true "Code ISIN de l'actif"
+// @Param period query string false "Période (1m, 3m, 1y, all)" default(1y)
+// @Success 200 {object} performance.AssetPerformance
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/assets/{isin}/performance [get]
 func (h *Handler) GetAssetPerformanceHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	isin := vars["isin"]
@@ -1222,6 +1387,18 @@ func (h *Handler) GetAssetPerformanceHandler(w http.ResponseWriter, r *http.Requ
 // Fees handlers
 
 // GetAccountFeesHandler retrieves fee metrics for a specific account
+// @Summary Frais d'un compte
+// @Description Calcule les métriques de frais pour un compte spécifique
+// @Tags fees
+// @Produce json
+// @Param id path string true "ID du compte"
+// @Param start_date query string false "Date de début (YYYY-MM-DD)"
+// @Param end_date query string false "Date de fin (YYYY-MM-DD)"
+// @Success 200 {object} fees.FeesMetrics
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/accounts/{id}/fees [get]
 func (h *Handler) GetAccountFeesHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	accountID := vars["id"]
@@ -1274,6 +1451,16 @@ func (h *Handler) GetAccountFeesHandler(w http.ResponseWriter, r *http.Request) 
 }
 
 // GetGlobalFeesHandler retrieves fee metrics across all accounts
+// @Summary Frais globaux
+// @Description Calcule les métriques de frais pour tous les comptes
+// @Tags fees
+// @Produce json
+// @Param start_date query string false "Date de début (YYYY-MM-DD)"
+// @Param end_date query string false "Date de fin (YYYY-MM-DD)"
+// @Success 200 {object} fees.FeesMetrics
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/fees [get]
 func (h *Handler) GetGlobalFeesHandler(w http.ResponseWriter, r *http.Request) {
 	// Parse date filters
 	startDate := r.URL.Query().Get("start_date")
@@ -1309,6 +1496,16 @@ func (h *Handler) GetGlobalFeesHandler(w http.ResponseWriter, r *http.Request) {
 // Asset handlers
 
 // GetAssetPriceHandler retrieves the current price for an asset by ISIN
+// @Summary Prix actuel d'un actif
+// @Description Récupère le prix actuel d'un actif par son code ISIN
+// @Tags assets
+// @Produce json
+// @Param isin path string true "Code ISIN de l'actif"
+// @Success 200 {object} models.AssetPrice
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/assets/{isin}/price [get]
 func (h *Handler) GetAssetPriceHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	isin := vars["isin"]
@@ -1335,6 +1532,18 @@ func (h *Handler) GetAssetPriceHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetAssetPriceHistoryHandler retrieves historical prices for an asset
+// @Summary Historique des prix d'un actif
+// @Description Récupère l'historique des prix pour un actif sur une période donnée
+// @Tags assets
+// @Produce json
+// @Param isin path string true "Code ISIN de l'actif"
+// @Param start_date query string false "Date de début (YYYY-MM-DD)"
+// @Param end_date query string false "Date de fin (YYYY-MM-DD)"
+// @Success 200 {array} models.AssetPrice
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/assets/{isin}/history [get]
 func (h *Handler) GetAssetPriceHistoryHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	isin := vars["isin"]
@@ -1393,6 +1602,15 @@ func (h *Handler) GetAssetPriceHistoryHandler(w http.ResponseWriter, r *http.Req
 }
 
 // RefreshAssetPricesHandler forces a refresh of all historical prices for an asset
+// @Summary Rafraîchir les prix d'un actif
+// @Description Supprime le cache et récupère l'historique complet des prix
+// @Tags assets
+// @Produce json
+// @Param isin path string true "Code ISIN de l'actif"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/assets/{isin}/price/refresh [post]
 func (h *Handler) RefreshAssetPricesHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	isin := vars["isin"]
@@ -1457,6 +1675,15 @@ func (h *Handler) RefreshAssetPricesHandler(w http.ResponseWriter, r *http.Reque
 // UpdateSingleAssetPrice forces an update of a single asset price
 
 // UpdateSingleAssetPrice forces an update of a single asset price
+// @Summary Mettre à jour le prix d'un actif
+// @Description Force la mise à jour du prix actuel d'un actif
+// @Tags assets
+// @Produce json
+// @Param isin path string true "Code ISIN de l'actif"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/assets/{isin}/price/update [post]
 func (h *Handler) UpdateSingleAssetPrice(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	isin := vars["isin"]
@@ -1516,6 +1743,13 @@ type Purchase struct {
 }
 
 // GetAssetsHandler returns all assets with user positions
+// @Summary Lister les actifs avec positions
+// @Description Retourne tous les actifs avec les positions de l'utilisateur
+// @Tags assets
+// @Produce json
+// @Success 200 {array} AssetPosition
+// @Failure 500 {object} ErrorResponse
+// @Router /api/assets [get]
 func (h *Handler) GetAssetsHandler(w http.ResponseWriter, r *http.Request) {
 	// Get all accounts
 	accounts, err := h.DB.GetAllAccounts()
@@ -1643,6 +1877,15 @@ func (h *Handler) GetAssetsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // SymbolSearchHandler searches for symbols on Yahoo Finance
+// @Summary Rechercher un symbole boursier
+// @Description Recherche un symbole sur Yahoo Finance
+// @Tags symbols
+// @Produce json
+// @Param query query string true "Terme de recherche"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/symbols/search [get]
 func (h *Handler) SymbolSearchHandler(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query().Get("query")
 	if query == "" {
@@ -1869,6 +2112,13 @@ func (h *Handler) resolveAssetSymbols() int {
 }
 
 // ResolveAllSymbolsHandler manually triggers symbol resolution for all assets
+// @Summary Résoudre tous les symboles manquants
+// @Description Déclenche la résolution des symboles Yahoo Finance pour tous les actifs
+// @Tags assets
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Failure 500 {object} ErrorResponse
+// @Router /api/assets/symbols/resolve [post]
 func (h *Handler) ResolveAllSymbolsHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("INFO: Manual symbol resolution triggered")
 
@@ -1882,6 +2132,18 @@ func (h *Handler) ResolveAllSymbolsHandler(w http.ResponseWriter, r *http.Reques
 }
 
 // UpdateAssetSymbolHandler updates the symbol for an asset
+// @Summary Mettre à jour le symbole d'un actif
+// @Description Met à jour le symbole Yahoo Finance d'un actif
+// @Tags assets
+// @Accept json
+// @Produce json
+// @Param isin path string true "Code ISIN de l'actif"
+// @Param body body object true "Symbole et statut de vérification"
+// @Success 200 {object} models.Asset
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/assets/{isin}/symbol [put]
 func (h *Handler) UpdateAssetSymbolHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	isin := vars["isin"]

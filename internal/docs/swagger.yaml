@@ -1,0 +1,1147 @@
+basePath: /
+definitions:
+  api.AssetPosition:
+    properties:
+      average_buy_price:
+        type: number
+      currency:
+        type: string
+      current_price:
+        type: number
+      current_value:
+        type: number
+      isin:
+        type: string
+      name:
+        type: string
+      purchases:
+        items:
+          $ref: '#/definitions/api.Purchase'
+        type: array
+      quantity:
+        type: number
+      symbol:
+        type: string
+      symbol_verified:
+        type: boolean
+      total_invested:
+        type: number
+      unrealized_gain:
+        type: number
+      unrealized_gain_pct:
+        type: number
+    type: object
+  api.CompleteSyncRequest:
+    properties:
+      code:
+        type: string
+      process_id:
+        type: string
+    type: object
+  api.CreateAccountRequest:
+    properties:
+      credentials:
+        additionalProperties: true
+        type: object
+      name:
+        type: string
+      platform:
+        type: string
+    type: object
+  api.ErrorDetail:
+    properties:
+      code:
+        type: string
+      details: {}
+      message:
+        type: string
+    type: object
+  api.ErrorResponse:
+    properties:
+      error:
+        $ref: '#/definitions/api.ErrorDetail'
+    type: object
+  api.ImportSummary:
+    properties:
+      details:
+        items:
+          type: string
+        type: array
+      errors:
+        type: integer
+      ignored:
+        type: integer
+      imported:
+        type: integer
+    type: object
+  api.InitSyncResponse:
+    properties:
+      message:
+        type: string
+      process_id:
+        type: string
+      requires_two_factor:
+        type: boolean
+    type: object
+  api.Purchase:
+    properties:
+      date:
+        type: string
+      price:
+        type: number
+      quantity:
+        type: number
+    type: object
+  api.TransactionResponse:
+    properties:
+      limit:
+        type: integer
+      page:
+        type: integer
+      total:
+        type: integer
+      total_pages:
+        type: integer
+      transactions:
+        items:
+          $ref: '#/definitions/models.Transaction'
+        type: array
+    type: object
+  fees.FeeTimeSeriesPoint:
+    properties:
+      date:
+        type: string
+      fees:
+        type: number
+    type: object
+  fees.FeesMetrics:
+    properties:
+      average_fees:
+        type: number
+      fees_by_type:
+        additionalProperties:
+          format: float64
+          type: number
+        type: object
+      time_series:
+        items:
+          $ref: '#/definitions/fees.FeeTimeSeriesPoint'
+        type: array
+      total_fees:
+        type: number
+      transaction_count:
+        type: integer
+    type: object
+  models.Account:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      last_sync:
+        type: string
+      name:
+        type: string
+      platform:
+        description: '"traderepublic", "binance", "boursedirect"'
+        type: string
+      updated_at:
+        type: string
+    type: object
+  models.Asset:
+    properties:
+      currency:
+        type: string
+      isin:
+        type: string
+      last_updated:
+        type: string
+      name:
+        type: string
+      symbol:
+        type: string
+      symbol_verified:
+        type: boolean
+      type:
+        description: '"stock", "etf", "crypto"'
+        type: string
+    type: object
+  models.AssetPrice:
+    properties:
+      currency:
+        type: string
+      id:
+        type: integer
+      isin:
+        type: string
+      price:
+        type: number
+      timestamp:
+        type: string
+    type: object
+  models.Transaction:
+    properties:
+      account_id:
+        description: New fields for database integration
+        type: string
+      action_payload:
+        type: string
+      action_type:
+        type: string
+      actions:
+        description: Details (when extract_details is true)
+        type: string
+      amount:
+        type: string
+      amount_currency:
+        type: string
+      amount_fraction:
+        type: integer
+      amount_value:
+        type: number
+      avatar:
+        type: string
+      cash_account_number:
+        type: string
+      deleted:
+        type: boolean
+      dividend_per_share:
+        type: string
+      fees:
+        type: string
+      hidden:
+        type: boolean
+      icon:
+        type: string
+      id:
+        type: string
+      isin:
+        type: string
+      metadata:
+        description: JSON string for additional platform-specific data
+        type: string
+      quantity:
+        type: number
+      share_price:
+        type: string
+      shares:
+        type: string
+      status:
+        type: string
+      subtitle:
+        type: string
+      taxes:
+        type: string
+      timestamp:
+        type: string
+      title:
+        type: string
+      total:
+        type: string
+      transaction_type:
+        description: '"buy", "sell", "dividend", "fee"'
+        type: string
+    type: object
+  performance.AssetPerformance:
+    properties:
+      current_price:
+        type: number
+      isin:
+        type: string
+      name:
+        type: string
+      performance_pct:
+        type: number
+      realized_gains:
+        type: number
+      time_series:
+        items:
+          $ref: '#/definitions/performance.PerformancePoint'
+        type: array
+      total_fees:
+        type: number
+      total_invested:
+        type: number
+      total_quantity:
+        type: number
+      total_value:
+        type: number
+      unrealized_gains:
+        type: number
+    type: object
+  performance.Performance:
+    properties:
+      cash_balance:
+        type: number
+      performance_pct:
+        type: number
+      realized_gains:
+        type: number
+      time_series:
+        items:
+          $ref: '#/definitions/performance.PerformancePoint'
+        type: array
+      total_fees:
+        type: number
+      total_invested:
+        type: number
+      total_value:
+        type: number
+      unrealized_gains:
+        type: number
+    type: object
+  performance.PerformancePoint:
+    properties:
+      date:
+        type: string
+      invested:
+        description: Amount invested in assets (cost basis)
+        type: number
+      value:
+        description: Current value of assets in EUR
+        type: number
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: API de gestion de portefeuille financier - synchronisation de comptes,
+    suivi de performance et analyse des frais.
+  title: Valhafin API
+  version: "1.0"
+paths:
+  /api/accounts:
+    get:
+      description: Récupère la liste de tous les comptes financiers
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Account'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Lister tous les comptes
+      tags:
+      - accounts
+    post:
+      consumes:
+      - application/json
+      description: Crée un compte financier avec des credentials chiffrés
+      parameters:
+      - description: Données du compte
+        in: body
+        name: account
+        required: true
+        schema:
+          $ref: '#/definitions/api.CreateAccountRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Account'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Créer un nouveau compte
+      tags:
+      - accounts
+  /api/accounts/{id}:
+    delete:
+      description: Supprime un compte et toutes ses données associées
+      parameters:
+      - description: ID du compte
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Supprimer un compte
+      tags:
+      - accounts
+    get:
+      description: Retourne les détails d'un compte financier
+      parameters:
+      - description: ID du compte
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Account'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Récupérer un compte par ID
+      tags:
+      - accounts
+  /api/accounts/{id}/fees:
+    get:
+      description: Calcule les métriques de frais pour un compte spécifique
+      parameters:
+      - description: ID du compte
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Date de début (YYYY-MM-DD)
+        in: query
+        name: start_date
+        type: string
+      - description: Date de fin (YYYY-MM-DD)
+        in: query
+        name: end_date
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/fees.FeesMetrics'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Frais d'un compte
+      tags:
+      - fees
+  /api/accounts/{id}/performance:
+    get:
+      description: Calcule les métriques de performance pour un compte spécifique
+      parameters:
+      - description: ID du compte
+        in: path
+        name: id
+        required: true
+        type: string
+      - default: 1y
+        description: Période (1m, 3m, 1y, all)
+        in: query
+        name: period
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/performance.Performance'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Performance d'un compte
+      tags:
+      - performance
+  /api/accounts/{id}/sync:
+    post:
+      description: Déclenche la synchronisation des transactions pour un compte (Binance,
+        Bourse Direct)
+      parameters:
+      - description: ID du compte
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Synchroniser un compte
+      tags:
+      - sync
+  /api/accounts/{id}/sync/complete:
+    post:
+      consumes:
+      - application/json
+      description: Finalise la synchronisation en fournissant le code de vérification
+      parameters:
+      - description: ID du compte
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Process ID et code 2FA
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.CompleteSyncRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Compléter la synchronisation Trade Republic avec le code 2FA
+      tags:
+      - sync
+  /api/accounts/{id}/sync/init:
+    post:
+      description: Déclenche l'authentification 2FA pour Trade Republic
+      parameters:
+      - description: ID du compte
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.InitSyncResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Initier la synchronisation Trade Republic
+      tags:
+      - sync
+  /api/accounts/{id}/transactions:
+    get:
+      description: Retourne les transactions paginées et filtrées d'un compte
+      parameters:
+      - description: ID du compte
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Date de début (YYYY-MM-DD)
+        in: query
+        name: start_date
+        type: string
+      - description: Date de fin (YYYY-MM-DD)
+        in: query
+        name: end_date
+        type: string
+      - description: Filtrer par ISIN
+        in: query
+        name: asset
+        type: string
+      - description: Filtrer par type (buy, sell, dividend, fee)
+        in: query
+        name: type
+        type: string
+      - default: 1
+        description: Numéro de page
+        in: query
+        name: page
+        type: integer
+      - default: 50
+        description: Nombre de résultats par page
+        in: query
+        name: limit
+        type: integer
+      - description: Trier par champ (timestamp, amount)
+        in: query
+        name: sort_by
+        type: string
+      - description: Ordre de tri (asc, desc)
+        in: query
+        name: sort_order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.TransactionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Récupérer les transactions d'un compte
+      tags:
+      - transactions
+  /api/assets:
+    get:
+      description: Retourne tous les actifs avec les positions de l'utilisateur
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/api.AssetPosition'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Lister les actifs avec positions
+      tags:
+      - assets
+  /api/assets/{isin}/history:
+    get:
+      description: Récupère l'historique des prix pour un actif sur une période donnée
+      parameters:
+      - description: Code ISIN de l'actif
+        in: path
+        name: isin
+        required: true
+        type: string
+      - description: Date de début (YYYY-MM-DD)
+        in: query
+        name: start_date
+        type: string
+      - description: Date de fin (YYYY-MM-DD)
+        in: query
+        name: end_date
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.AssetPrice'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Historique des prix d'un actif
+      tags:
+      - assets
+  /api/assets/{isin}/performance:
+    get:
+      description: Calcule les métriques de performance pour un actif spécifique
+      parameters:
+      - description: Code ISIN de l'actif
+        in: path
+        name: isin
+        required: true
+        type: string
+      - default: 1y
+        description: Période (1m, 3m, 1y, all)
+        in: query
+        name: period
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/performance.AssetPerformance'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Performance d'un actif
+      tags:
+      - performance
+  /api/assets/{isin}/price:
+    get:
+      description: Récupère le prix actuel d'un actif par son code ISIN
+      parameters:
+      - description: Code ISIN de l'actif
+        in: path
+        name: isin
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.AssetPrice'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Prix actuel d'un actif
+      tags:
+      - assets
+  /api/assets/{isin}/price/refresh:
+    post:
+      description: Supprime le cache et récupère l'historique complet des prix
+      parameters:
+      - description: Code ISIN de l'actif
+        in: path
+        name: isin
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Rafraîchir les prix d'un actif
+      tags:
+      - assets
+  /api/assets/{isin}/price/update:
+    post:
+      description: Force la mise à jour du prix actuel d'un actif
+      parameters:
+      - description: Code ISIN de l'actif
+        in: path
+        name: isin
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Mettre à jour le prix d'un actif
+      tags:
+      - assets
+  /api/assets/{isin}/symbol:
+    put:
+      consumes:
+      - application/json
+      description: Met à jour le symbole Yahoo Finance d'un actif
+      parameters:
+      - description: Code ISIN de l'actif
+        in: path
+        name: isin
+        required: true
+        type: string
+      - description: Symbole et statut de vérification
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Asset'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Mettre à jour le symbole d'un actif
+      tags:
+      - assets
+  /api/assets/symbols/resolve:
+    post:
+      description: Déclenche la résolution des symboles Yahoo Finance pour tous les
+        actifs
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Résoudre tous les symboles manquants
+      tags:
+      - assets
+  /api/fees:
+    get:
+      description: Calcule les métriques de frais pour tous les comptes
+      parameters:
+      - description: Date de début (YYYY-MM-DD)
+        in: query
+        name: start_date
+        type: string
+      - description: Date de fin (YYYY-MM-DD)
+        in: query
+        name: end_date
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/fees.FeesMetrics'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Frais globaux
+      tags:
+      - fees
+  /api/performance:
+    get:
+      description: Calcule les métriques de performance pour tous les comptes
+      parameters:
+      - default: 1y
+        description: Période (1m, 3m, 1y, all)
+        in: query
+        name: period
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/performance.Performance'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Performance globale
+      tags:
+      - performance
+  /api/symbols/search:
+    get:
+      description: Recherche un symbole sur Yahoo Finance
+      parameters:
+      - description: Terme de recherche
+        in: query
+        name: query
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Rechercher un symbole boursier
+      tags:
+      - symbols
+  /api/transactions:
+    get:
+      description: Retourne les transactions paginées de tous les comptes
+      parameters:
+      - description: Date de début (YYYY-MM-DD)
+        in: query
+        name: start_date
+        type: string
+      - description: Date de fin (YYYY-MM-DD)
+        in: query
+        name: end_date
+        type: string
+      - description: Filtrer par ISIN
+        in: query
+        name: asset
+        type: string
+      - description: Filtrer par type (buy, sell, dividend, fee)
+        in: query
+        name: type
+        type: string
+      - default: 1
+        description: Numéro de page
+        in: query
+        name: page
+        type: integer
+      - default: 50
+        description: Nombre de résultats par page
+        in: query
+        name: limit
+        type: integer
+      - description: Trier par champ (timestamp, amount)
+        in: query
+        name: sort_by
+        type: string
+      - description: Ordre de tri (asc, desc)
+        in: query
+        name: sort_order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.TransactionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Récupérer toutes les transactions
+      tags:
+      - transactions
+  /api/transactions/{id}:
+    put:
+      consumes:
+      - application/json
+      description: Met à jour une transaction existante
+      parameters:
+      - description: ID de la transaction
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Données de la transaction
+        in: body
+        name: transaction
+        required: true
+        schema:
+          $ref: '#/definitions/models.Transaction'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Transaction'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Modifier une transaction
+      tags:
+      - transactions
+  /api/transactions/import:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Importe des transactions à partir d'un fichier CSV avec déduplication
+      parameters:
+      - description: ID du compte
+        in: formData
+        name: account_id
+        required: true
+        type: string
+      - description: Fichier CSV
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.ImportSummary'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Importer des transactions depuis un CSV
+      tags:
+      - transactions
+  /health:
+    get:
+      description: Retourne le statut de l'application et de la base de données
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Application healthy
+          schema:
+            additionalProperties: true
+            type: object
+        "503":
+          description: Application unhealthy
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Vérifier l'état de santé de l'application
+      tags:
+      - monitoring
+schemes:
+- http
+swagger: "2.0"

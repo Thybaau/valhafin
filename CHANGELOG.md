@@ -1,0 +1,88 @@
+# Changelog
+
+All notable changes to the Valhafin project are documented in this file.
+
+## [Unreleased]
+
+### Added
+- Swagger/OpenAPI documentation for all 25 API endpoints
+- Swagger UI accessible at `/swagger/index.html`
+- `make swagger` target to regenerate documentation
+
+## [1.0.3] - 2026-03-07
+
+### Added
+- Application title and SVG icon
+
+### Fixed
+- Nginx SPA routing to avoid directory listing on `/assets` route
+
+## [1.0.2] - 2026-03-07
+
+### Changed
+- Frontend API URL now uses relative URLs (`/api` in prod, `localhost:8080/api` in dev via env files)
+
+### Fixed
+- Frontend linting
+
+### Updated
+- codecov/codecov-action v4 → v5
+- actions/upload-artifact v4 → v6
+- actions/checkout v4 → v6
+- actions/cache v4 → v5
+- actions/download-artifact v4 → v7
+- lucide-react (frontend)
+- github.com/lib/pq v1.11.1 → v1.11.2
+- @types/node (frontend)
+
+## [1.0.1] - 2026-02-12
+
+### Fixed
+- Docker image tag
+- Image path in `docker-compose.yml`
+- Docker Compose pull permissions
+- Repo name and Docker Compose command in workflow
+- `schema_migrations` table created last instead of first
+- Missing dev dependencies in frontend Dockerfile
+
+### Added
+- Backend build and start job in tests workflow
+- Backend container error check step in Docker workflow
+- `ENCRYPTION_KEY` environment variable in Docker build workflow
+- Pull policy in Docker workflow
+
+## [1.0.0] - 2026-02-12
+
+### Added
+- Go backend with REST API (29 endpoints)
+- React 19 + TypeScript + Tailwind CSS frontend
+- PostgreSQL database with automatic migrations
+- AES-256-GCM credential encryption
+- Trade Republic scraper with WebSocket authentication and 2FA
+- Yahoo Finance price service with cache and automatic symbol resolution
+- Scheduler for periodic price updates
+- Performance calculation per account, global and per asset
+- Fee metrics per account and global
+- CSV transaction import with deduplication
+- Dashboard tab with charts and latest buys/sells
+- Performance tab with evolution charts
+- Assets tab with price history and diagrams (1M, 5Y, MAX)
+- Fees tab with evolution chart
+- Yahoo Finance symbol search modal
+- Animations and responsive design
+- Dockerfiles and Docker Compose for production
+- CI/CD workflows: tests, security, Docker build, release
+- Dependabot for dependency tracking
+- API endpoints documentation
+- README badges
+
+### Fixed
+- Performance calculation in diagrams
+- Realized and unrealized gains calculation
+- Asset quantities in transactions tab
+- Cache issue when refreshing prices
+- Buy point positioning in diagrams
+- Asset price verification in list
+- Yahoo Finance price fetching issue
+- CORS issue when adding an account
+- Frontend linting
