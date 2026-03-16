@@ -112,13 +112,13 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Download backend image
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: backend-image
           path: /tmp
 
       - name: Download frontend image
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: frontend-image
           path: /tmp
@@ -250,13 +250,13 @@ jobs:
 
     steps:
       - name: Download backend image
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: backend-image
           path: /tmp
 
       - name: Download frontend image
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: frontend-image
           path: /tmp
