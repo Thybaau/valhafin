@@ -9,6 +9,9 @@ All notable changes to the Valhafin project are documented in this file.
 - Swagger UI accessible at `/swagger/index.html`
 - `make swagger` target to regenerate documentation
 
+### Changed
+- Refactored `handlers.go` (~2200 lines) into domain-specific files: `handler.go`, `handler_health.go`, `handler_accounts.go`, `handler_sync.go`, `handler_transactions.go`, `handler_performance.go`, `handler_fees.go`, `handler_assets.go`
+
 ## [1.0.3] - 2026-03-07
 
 ### Added
