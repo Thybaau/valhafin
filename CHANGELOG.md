@@ -4,6 +4,8 @@ All notable changes to the Valhafin project are documented in this file.
 
 ## [Unreleased]
 
+## [v1.0.4] - 2026-03-16
+
 ### Added
 - Swagger/OpenAPI documentation for all 25 API endpoints
 - Swagger UI accessible at `/swagger/index.html`
@@ -12,7 +14,7 @@ All notable changes to the Valhafin project are documented in this file.
 ### Changed
 - Refactored `handlers.go` (~2200 lines) into domain-specific files: `handler.go`, `handler_health.go`, `handler_accounts.go`, `handler_sync.go`, `handler_transactions.go`, `handler_performance.go`, `handler_fees.go`, `handler_assets.go`
 
-## [1.0.3] - 2026-03-07
+## [v1.0.3] - 2026-03-07
 
 ### Added
 - Application title and SVG icon
@@ -20,7 +22,7 @@ All notable changes to the Valhafin project are documented in this file.
 ### Fixed
 - Nginx SPA routing to avoid directory listing on `/assets` route
 
-## [1.0.2] - 2026-03-07
+## [v1.0.2] - 2026-03-07
 
 ### Changed
 - Frontend API URL now uses relative URLs (`/api` in prod, `localhost:8080/api` in dev via env files)
@@ -38,7 +40,7 @@ All notable changes to the Valhafin project are documented in this file.
 - github.com/lib/pq v1.11.1 → v1.11.2
 - @types/node (frontend)
 
-## [1.0.1] - 2026-02-12
+## [v1.0.1] - 2026-02-12
 
 ### Fixed
 - Docker image tag
@@ -54,7 +56,7 @@ All notable changes to the Valhafin project are documented in this file.
 - `ENCRYPTION_KEY` environment variable in Docker build workflow
 - Pull policy in Docker workflow
 
-## [1.0.0] - 2026-02-12
+## [v1.0.0] - 2026-02-12
 
 ### Added
 - Go backend with REST API (29 endpoints)
