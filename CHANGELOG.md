@@ -4,6 +4,10 @@ All notable changes to the Valhafin project are documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- Trade Republic sync now surfaces real API error responses (HTTP status + body) instead of generic messages
+- Sync error details displayed in frontend account card instead of generic "Erreur lors de la synchronisation"
+
 ## [v1.0.4] - 2026-03-16
 
 ### Added
