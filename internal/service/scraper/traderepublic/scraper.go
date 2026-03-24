@@ -12,14 +12,18 @@ import (
 )
 
 const (
-	baseURL   = "https://api.traderepublic.com"
-	wsURL     = "wss://api.traderepublic.com"
-	userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+	baseURL      = "https://api.traderepublic.com"
+	wsURL        = "wss://api.traderepublic.com"
+	userAgent    = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+	trAppVersion = "13.40.5"
+	trPlatform   = "web"
 )
 
 // Scraper implements the scraper.Scraper interface for Trade Republic
 type Scraper struct {
-	client *http.Client
+	client     *http.Client
+	wafToken   string
+	deviceInfo string
 }
 
 // NewScraper creates a new Trade Republic scraper
@@ -28,6 +32,34 @@ func NewScraper() *Scraper {
 		client: &http.Client{
 			Timeout: 30 * time.Second,
 		},
+		deviceInfo: generateDeviceInfo(),
+	}
+}
+
+// InitWAF fetches the AWS WAF token via headless browser.
+// This must be called before Authenticate if Trade Republic requires WAF validation.
+func (s *Scraper) InitWAF() error {
+	token, err := fetchWAFToken()
+	if err != nil {
+		return fmt.Errorf("failed to fetch WAF token: %w", err)
+	}
+	s.wafToken = token
+	return nil
+}
+
+// setTRHeaders applies all required Trade Republic headers to an HTTP request
+func (s *Scraper) setTRHeaders(req *http.Request) {
+	req.Header.Set("User-Agent", userAgent)
+	req.Header.Set("Accept", "*/*")
+	req.Header.Set("Accept-Language", "fr")
+	req.Header.Set("Cache-Control", "no-cache")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Pragma", "no-cache")
+	req.Header.Set("x-tr-app-version", trAppVersion)
+	req.Header.Set("x-tr-device-info", s.deviceInfo)
+	req.Header.Set("x-tr-platform", trPlatform)
+	if s.wafToken != "" {
+		req.Header.Set("x-aws-waf-token", s.wafToken)
 	}
 }
 
