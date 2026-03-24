@@ -190,9 +190,21 @@ export default function AccountCard({ account }: AccountCardProps) {
 
         {(syncMutation.isError || initSyncMutation.isError || completeSyncMutation.isError) && (
           <div className="mt-3 p-2 bg-error/10 border border-error rounded-md animate-slide-in">
-            <p className="text-sm text-error">
+            <p className="text-sm text-error font-medium">
               Erreur lors de la synchronisation
             </p>
+            {(() => {
+              const err = syncMutation.error || initSyncMutation.error || completeSyncMutation.error
+              const apiError = (err as any)?.response?.data?.error
+              if (apiError) {
+                return (
+                  <p className="text-xs text-error/80 mt-1">
+                    {apiError.message}{apiError.code ? ` (${apiError.code})` : ''}
+                  </p>
+                )
+              }
+              return null
+            })()}
           </div>
         )}
       </div>

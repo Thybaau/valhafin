@@ -169,15 +169,13 @@ func (h *Handler) InitSyncHandler(w http.ResponseWriter, r *http.Request) {
 
 		// If it's a login error, it means the credentials are wrong
 		if strings.Contains(errMsg, "Login failed") {
-			respondError(w, http.StatusBadRequest, "INVALID_CREDENTIALS", "Invalid phone number or PIN", map[string]string{
-				"error": errMsg,
-			})
+			log.Printf("[SYNC] InitSync failed for account %s: %s", accountID, errMsg)
+			respondError(w, http.StatusBadRequest, "INVALID_CREDENTIALS", errMsg, nil)
 			return
 		}
 
-		respondError(w, http.StatusInternalServerError, "AUTH_ERROR", "Failed to initiate authentication", map[string]string{
-			"error": authErr.Error(),
-		})
+		log.Printf("[SYNC] InitSync failed for account %s: %s", accountID, authErr.Error())
+		respondError(w, http.StatusInternalServerError, "AUTH_ERROR", authErr.Error(), nil)
 		return
 	}
 

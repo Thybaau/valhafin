@@ -53,7 +53,8 @@ func (s *Scraper) authenticate(phoneNumber, pin string) (string, error) {
 	body, _ := io.ReadAll(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
-		return "", types.NewAuthError("traderepublic", "Login failed. Check your phone number and PIN", nil)
+		return "", types.NewAuthError("traderepublic",
+			fmt.Sprintf("Login failed (HTTP %d): %s", resp.StatusCode, string(body)), nil)
 	}
 
 	var loginResp loginResponse
@@ -96,7 +97,9 @@ func (s *Scraper) Authenticate2FA(processID, code string) (string, error) {
 	defer verifyResp.Body.Close()
 
 	if verifyResp.StatusCode != http.StatusOK {
-		return "", types.NewAuthError("traderepublic", "Device verification failed. Check the code and try again", nil)
+		verifyBody, _ := io.ReadAll(verifyResp.Body)
+		return "", types.NewAuthError("traderepublic",
+			fmt.Sprintf("Device verification failed (HTTP %d): %s", verifyResp.StatusCode, string(verifyBody)), nil)
 	}
 
 	// Step 4: Extract session token from cookies
