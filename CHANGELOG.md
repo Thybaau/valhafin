@@ -2,7 +2,7 @@
 
 All notable changes to the Valhafin project are documented in this file.
 
-## [Unreleased]
+## [v1.0.5] - 2026-03-24
 
 ### Added
 - AWS WAF token retrieval via headless browser (`go-rod/rod`) to bypass Trade Republic's new anti-bot protection
@@ -21,6 +21,7 @@ All notable changes to the Valhafin project are documented in this file.
 ### Fixed
 - Trade Republic sync now surfaces real API error responses (HTTP status + body) instead of generic messages
 - Sync error details displayed in frontend account card instead of generic "Erreur lors de la synchronisation"
+- Replace `as any` with explicit type in AccountCard sync error handling (eslint `no-explicit-any`)
 
 ## [v1.0.4] - 2026-03-16
 
