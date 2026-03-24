@@ -195,7 +195,7 @@ export default function AccountCard({ account }: AccountCardProps) {
             </p>
             {(() => {
               const err = syncMutation.error || initSyncMutation.error || completeSyncMutation.error
-              const apiError = (err as any)?.response?.data?.error
+              const apiError = (err as { response?: { data?: { error?: { message?: string; code?: string } } } })?.response?.data?.error
               if (apiError) {
                 return (
                   <p className="text-xs text-error/80 mt-1">

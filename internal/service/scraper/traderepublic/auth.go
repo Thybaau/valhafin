@@ -29,6 +29,14 @@ func (s *Scraper) Complete2FA(processID, code string) (string, error) {
 // Note: This is a simplified version that doesn't handle 2FA interactively
 // In a production environment, this would need to be handled differently
 func (s *Scraper) authenticate(phoneNumber, pin string) (string, error) {
+	// Ensure WAF token is available before making any API call
+	if s.wafToken == "" {
+		if err := s.InitWAF(); err != nil {
+			return "", types.NewAuthError("traderepublic",
+				fmt.Sprintf("Failed to obtain WAF token: %v", err), err)
+		}
+	}
+
 	// Step 1: Initiate login
 	loginPayload := map[string]string{
 		"phoneNumber": phoneNumber,
@@ -41,8 +49,7 @@ func (s *Scraper) authenticate(phoneNumber, pin string) (string, error) {
 		return "", types.NewNetworkError("traderepublic", "Failed to create login request", err)
 	}
 
-	req.Header.Set("User-Agent", userAgent)
-	req.Header.Set("Content-Type", "application/json")
+	s.setTRHeaders(req)
 
 	resp, err := s.client.Do(req)
 	if err != nil {
@@ -88,7 +95,7 @@ func (s *Scraper) Authenticate2FA(processID, code string) (string, error) {
 		return "", types.NewNetworkError("traderepublic", "Failed to create verification request", err)
 	}
 
-	verifyReq.Header.Set("User-Agent", userAgent)
+	s.setTRHeaders(verifyReq)
 
 	verifyResp, err := s.client.Do(verifyReq)
 	if err != nil {

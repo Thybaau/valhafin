@@ -2,11 +2,26 @@
 
 All notable changes to the Valhafin project are documented in this file.
 
-## [Unreleased]
+## [v1.0.5] - 2026-03-24
+
+### Added
+- AWS WAF token retrieval via headless browser (`go-rod/rod`) to bypass Trade Republic's new anti-bot protection
+- Device info generation (SHA-512 device ID, base64-encoded) matching Trade Republic's expected format
+- New `waf.go` file with `fetchWAFToken()` and `generateDeviceInfo()`
+- `InitWAF()` method on Trade Republic scraper (lazy-loaded automatically on first authentication)
+- `setTRHeaders()` helper applying all required headers to every TR API request
+
+### Changed
+- Trade Republic authentication requests now include full browser-like headers: `Accept`, `Accept-Language`, `Cache-Control`, `Pragma`, `x-aws-waf-token`, `x-tr-app-version`, `x-tr-device-info`, `x-tr-platform`
+- `Scraper` struct now stores `wafToken` and `deviceInfo` fields
+
+### Dependencies
+- Added `github.com/go-rod/rod` for headless browser automation
 
 ### Fixed
 - Trade Republic sync now surfaces real API error responses (HTTP status + body) instead of generic messages
 - Sync error details displayed in frontend account card instead of generic "Erreur lors de la synchronisation"
+- Replace `as any` with explicit type in AccountCard sync error handling (eslint `no-explicit-any`)
 
 ## [v1.0.4] - 2026-03-16
 
