@@ -7,14 +7,14 @@ RUN apk add --no-cache git ca-certificates tzdata
 # Set working directory
 WORKDIR /build
 
-# Copy go mod files from parent directory
-COPY ../go.mod ../go.sum ./
+# Copy go mod files
+COPY go.mod go.sum ./
 
 # Download dependencies
 RUN go mod download
 
-# Copy source code from parent directory
-COPY ../ .
+# Copy source code
+COPY . .
 
 # Build the application
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o valhafin .
@@ -22,8 +22,11 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o valhafin 
 # Stage 2: Runtime
 FROM alpine:3.23
 
-# Install runtime dependencies
-RUN apk add --no-cache ca-certificates tzdata
+# Install runtime dependencies (chromium required for Trade Republic WAF token retrieval)
+RUN apk add --no-cache ca-certificates tzdata chromium
+
+# Set Chromium path for go-rod (skip auto-download)
+ENV BROWSER=/usr/bin/chromium-browser
 
 # Create non-root user
 RUN addgroup -g 1000 valhafin && \

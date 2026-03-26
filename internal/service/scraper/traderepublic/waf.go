@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"github.com/go-rod/rod"
@@ -37,12 +38,19 @@ func generateDeviceInfo() string {
 func fetchWAFToken() (string, error) {
 	log.Println("Fetching AWS WAF token via headless browser...")
 
-	// Launch browser — rod auto-downloads Chromium if needed
-	path, _ := launcher.LookPath()
-	u := launcher.New().Bin(path).
+	// Launch browser — use BROWSER env var if set (container), otherwise auto-detect
+	browserPath := os.Getenv("BROWSER")
+	if browserPath == "" {
+		browserPath, _ = launcher.LookPath()
+	}
+	u := launcher.New().Bin(browserPath).
 		Headless(true).
 		Set("disable-gpu").
 		Set("no-sandbox").
+		Set("disable-setuid-sandbox").
+		Set("disable-dev-shm-usage").
+		Set("disable-software-rasterizer").
+		Set("single-process").
 		MustLaunch()
 
 	browser := rod.New().ControlURL(u).MustConnect()

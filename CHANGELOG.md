@@ -2,6 +2,13 @@
 
 All notable changes to the Valhafin project are documented in this file.
 
+## [Unreleased]
+
+### Fixed
+- Dockerfile: install Chromium in Alpine runtime image, set `BROWSER` env var to skip rod auto-download
+- Headless browser flags hardened for containers: `disable-dev-shm-usage`, `disable-setuid-sandbox`, `disable-software-rasterizer`, `single-process`
+- `waf.go`: use `BROWSER` env var when available, fallback to `launcher.LookPath()` for local dev
+
 ## [v1.0.5] - 2026-03-24
 
 ### Added
