@@ -2,7 +2,7 @@
 
 All notable changes to the Valhafin project are documented in this file.
 
-## [Unreleased]
+## [v1.0.6] - 2026-03-26
 
 ### Fixed
 - Dockerfile: install Chromium in Alpine runtime image, set `BROWSER` env var to skip rod auto-download
