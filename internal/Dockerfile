@@ -20,7 +20,7 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o valhafin .
 
 # Stage 2: Runtime
-FROM alpine:3.23
+FROM alpine:3.24
 
 # Install runtime dependencies (chromium required for Trade Republic WAF token retrieval)
 RUN apk add --no-cache ca-certificates tzdata chromium
